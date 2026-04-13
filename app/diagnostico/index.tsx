@@ -1,0 +1,10 @@
+import { Text, View } from 'react-native';
+
+export default function DiagnosticoScreen() {
+  return (
+    <View className="flex-1 items-center justify-center bg-fundo px-6">
+      <Text className="text-texto text-2xl font-bold">Diagnóstico</Text>
+      <Text className="text-texto/60 mt-2">Qual é o nível do seu conhecimento?</Text>
+    </View>
+  );
+}
