@@ -1,6 +1,8 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
-export default function SocorroScreen() {
+import { Text } from '@/src/components/ui/Text';
+
+export default function EmergencyScreen() {
   return (
     <View className="flex-1 items-center justify-center bg-fundo px-6">
       <Text className="text-texto text-2xl font-bold">Socorro!</Text>

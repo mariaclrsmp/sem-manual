@@ -1,1 +1,2 @@
-// Componentes específicos de cada feature do app
+export { ProactiveCard } from './ProactiveCard';
+export { TaskItem } from './TaskItem';

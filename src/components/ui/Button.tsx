@@ -1,4 +1,6 @@
-import { Pressable, Text } from 'react-native';
+import { Pressable } from 'react-native';
+
+import { Text } from './Text';
 
 type Variant = 'primary' | 'secondary' | 'ghost';
 type Size = 'sm' | 'md' | 'lg';

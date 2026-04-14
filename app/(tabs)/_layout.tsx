@@ -1,14 +1,13 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Tabs } from 'expo-router';
-
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-import { colors } from '@/src/constants/theme';
+import { useClientOnlyValue } from "@/components/useClientOnlyValue";
+import { colors } from "@/src/constants/theme";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { Tabs } from "expo-router";
 
 function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
+  name: React.ComponentProps<typeof FontAwesome>["name"];
   color: string;
 }) {
-  return <FontAwesome size={24} style={{ marginBottom: -3 }} {...props} />;
+  return <FontAwesome size={22} style={{ marginBottom: -3 }} {...props} />;
 }
 
 export default function TabLayout() {
@@ -16,37 +15,49 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.verde,
-        tabBarInactiveTintColor: '#9CA3AF',
-        tabBarStyle: { backgroundColor: '#FFFFFF' },
+        tabBarInactiveTintColor: "#9CA3AF",
+        tabBarStyle: { backgroundColor: "#FFFFFF" },
         headerShown: useClientOnlyValue(false, true),
+        tabBarLabelStyle: {
+          fontFamily: "Nunito_400Regular",
+          alignItems: "center",
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: "Início",
+          headerShown: false,
           tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="tarefas"
+        name="tasks"
         options={{
-          title: 'Tarefas',
-          tabBarIcon: ({ color }) => <TabBarIcon name="check-square-o" color={color} />,
+          title: "Tarefas",
+          headerShown: false,
+          tabBarIcon: ({ color }) => (
+            <TabBarIcon name="check-square-o" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="guias"
+        name="guides"
         options={{
-          title: 'Guias',
+          title: "Guias",
+          headerShown: false,
           tabBarIcon: ({ color }) => <TabBarIcon name="book" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="progresso"
+        name="progress"
         options={{
-          title: 'Progresso',
-          tabBarIcon: ({ color }) => <TabBarIcon name="bar-chart" color={color} />,
+          title: "Progresso",
+          headerShown: false,
+          tabBarIcon: ({ color }) => (
+            <TabBarIcon name="bar-chart" color={color} />
+          ),
         }}
       />
     </Tabs>

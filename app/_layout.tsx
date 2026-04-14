@@ -1,44 +1,42 @@
-import '../global.css';
+import "../global.css";
 
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { Text } from 'react-native';
-import 'react-native-reanimated';
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from "@react-navigation/native";
+import { useFonts } from "expo-font";
+import * as Notifications from "expo-notifications";
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { useEffect, useRef } from "react";
+import "react-native-reanimated";
 
-import { useColorScheme } from '@/components/useColorScheme';
+import { useColorScheme } from "@/components/useColorScheme";
+import {
+  scheduleDailyReminder,
+  getPushToken,
+  saveTokenToSupabase,
+} from "@/src/services/notificationsService";
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
+export { ErrorBoundary } from "expo-router";
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
+  initialRouteName: "(tabs)",
 };
 
-// Nunito como fonte padrão de todos os componentes Text do app.
-// Em React Native, fontFamily não cascateia via Views — defaultProps é o mecanismo global.
-(Text as any).defaultProps = (Text as any).defaultProps ?? {};
-(Text as any).defaultProps.style = { fontFamily: 'Nunito_400Regular' };
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    Nunito_400Regular: require('../assets/fonts/Nunito_400Regular.ttf'),
-    Nunito_600SemiBold: require('../assets/fonts/Nunito_600SemiBold.ttf'),
-    Nunito_700Bold: require('../assets/fonts/Nunito_700Bold.ttf'),
-    Nunito_800ExtraBold: require('../assets/fonts/Nunito_800ExtraBold.ttf'),
+    Nunito_400Regular: require("../assets/fonts/Nunito_400Regular.ttf"),
+    Nunito_600SemiBold: require("../assets/fonts/Nunito_600SemiBold.ttf"),
+    Nunito_700Bold: require("../assets/fonts/Nunito_700Bold.ttf"),
+    Nunito_800ExtraBold: require("../assets/fonts/Nunito_800ExtraBold.ttf"),
     ...FontAwesome.font,
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);
@@ -58,16 +56,50 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const notificacaoListener = useRef<Notifications.EventSubscription | null>(
+    null,
+  );
+  const respostaListener = useRef<Notifications.EventSubscription | null>(null);
+
+  useEffect(() => {
+    async function initNotifications() {
+      const token = await getPushToken();
+      if (token) await saveTokenToSupabase(token);
+      await scheduleDailyReminder();
+    }
+
+    initNotifications();
+
+    notificacaoListener.current = Notifications.addNotificationReceivedListener(
+      (notificacao) => {
+        console.log(
+          "[Notificação recebida]",
+          notificacao.request.content.title,
+        );
+      },
+    );
+
+    respostaListener.current =
+      Notifications.addNotificationResponseReceivedListener((resposta) => {
+        const data = resposta.notification.request.content.data;
+        console.log("[Notificação tocada]", data);
+      });
+
+    return () => {
+      notificacaoListener.current?.remove();
+      respostaListener.current?.remove();
+    };
+  }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="diagnostico" options={{ headerShown: false }} />
-        <Stack.Screen name="socorro" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="diagnostic" options={{ headerShown: false }} />
+        <Stack.Screen name="emergency" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       </Stack>
     </ThemeProvider>
   );
