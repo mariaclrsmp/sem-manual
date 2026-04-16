@@ -1,6 +1,5 @@
 import "../global.css";
 
-import FontAwesome from "@expo/vector-icons/FontAwesome";
 import {
   DarkTheme,
   DefaultTheme,
@@ -8,17 +7,19 @@ import {
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import * as Notifications from "expo-notifications";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useRef } from "react";
 import "react-native-reanimated";
 
-import { useColorScheme } from "@/components/useColorScheme";
 import {
-  scheduleDailyReminder,
   getPushToken,
   saveTokenToSupabase,
+  scheduleDailyReminder,
 } from "@/src/services/notificationsService";
+import { useAuthStore } from "@/src/stores/authStore";
+import { useThemeStore } from "@/src/stores/themeStore";
+import { useUserStore } from "@/src/stores/userStore";
 
 export { ErrorBoundary } from "expo-router";
 
@@ -34,7 +35,6 @@ export default function RootLayout() {
     Nunito_600SemiBold: require("../assets/fonts/Nunito_600SemiBold.ttf"),
     Nunito_700Bold: require("../assets/fonts/Nunito_700Bold.ttf"),
     Nunito_800ExtraBold: require("../assets/fonts/Nunito_800ExtraBold.ttf"),
-    ...FontAwesome.font,
   });
 
   useEffect(() => {
@@ -55,11 +55,36 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { scheme } = useThemeStore();
+  const router = useRouter();
+  const segments = useSegments();
+
+  const { session, isInitialized, initialize } = useAuthStore();
+  const name = useUserStore((s) => s.name);
+
   const notificacaoListener = useRef<Notifications.EventSubscription | null>(
     null,
   );
   const respostaListener = useRef<Notifications.EventSubscription | null>(null);
+
+  useEffect(() => {
+    return initialize();
+  }, []);
+
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const inAuthGroup = segments[0] === "(auth)";
+    const inOnboarding = segments[0] === "onboarding";
+
+    if (!session) {
+      if (!inAuthGroup) router.replace("/(auth)/login");
+    } else if (!name) {
+      if (!inOnboarding) router.replace("/onboarding");
+    } else {
+      if (inAuthGroup || inOnboarding) router.replace("/(tabs)");
+    }
+  }, [session, isInitialized, name]);
 
   useEffect(() => {
     async function initNotifications() {
@@ -92,14 +117,19 @@ function RootLayoutNav() {
   }, []);
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="diagnostic" options={{ headerShown: false }} />
-        <Stack.Screen name="emergency" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+    <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="onboarding/index" />
+        <Stack.Screen name="guides/[id]" />
+        <Stack.Screen name="diagnostic/index" />
+        <Stack.Screen name="emergency/index" />
+        <Stack.Screen name="emergency/[situation]" />
+        <Stack.Screen
+          name="modal"
+          options={{ headerShown: true, presentation: "modal" }}
+        />
       </Stack>
     </ThemeProvider>
   );

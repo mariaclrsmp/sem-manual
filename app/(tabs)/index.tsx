@@ -1,13 +1,37 @@
+import { LogOut, Moon, Sun } from "lucide-react-native";
 import { router } from "expo-router";
-import { Pressable, ScrollView, StatusBar, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProactiveCard } from "@/src/components/features/ProactiveCard";
 import { TaskItem } from "@/src/components/features/TaskItem";
 import { Text } from "@/src/components/ui/Text";
 import { colors } from "@/src/constants/theme";
+import { signOut } from "@/src/services/authService";
 import { useTasksStore } from "@/src/stores/tasksStore";
+import { useThemeStore } from "@/src/stores/themeStore";
 import { useCurrentLevelInfo, useUserStore } from "@/src/stores/userStore";
+
+// Lê direto do store — não depende de Appearance.setColorScheme() propagar
+function useTheme() {
+  const scheme = useThemeStore((s) => s.scheme);
+  const dark = scheme === "dark";
+  return {
+    dark,
+    bg: dark ? "#0F172A" : colors.fundo,
+    surface: dark ? "#1E293B" : "#ffffff",
+    text: dark ? "#F1F5F9" : colors.texto,
+    textMuted: dark ? "rgba(241,245,249,0.5)" : "#9CA3AF",
+    border: dark ? "#334155" : "#E5E7EB",
+    cardBorder: dark ? "#334155" : "#E5E7EB",
+  };
+}
 
 const GUIDES_MOCK = [
   {
@@ -49,6 +73,32 @@ function greeting(): string {
   if (hour < 12) return "Bom dia";
   if (hour < 18) return "Boa tarde";
   return "Boa noite";
+}
+
+function HeaderAction({
+  children,
+  onPress,
+}: {
+  children: React.ReactNode;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      style={({ pressed }) => ({
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: "rgba(0,0,0,0.18)",
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      {children}
+    </Pressable>
+  );
 }
 
 function XPCard() {
@@ -149,6 +199,7 @@ function SectionTitle({
   action?: string;
   onAction?: () => void;
 }) {
+  const theme = useTheme();
   return (
     <View
       style={{
@@ -162,7 +213,7 @@ function SectionTitle({
         style={{
           fontFamily: "Nunito_800ExtraBold",
           fontSize: 18,
-          color: colors.texto,
+          color: theme.text,
         }}
       >
         {title}
@@ -196,19 +247,22 @@ function GuideCard({
   title: string;
   duration: string;
 }) {
+  const theme = useTheme();
   return (
     <Pressable
       style={({ pressed }) => ({
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: theme.surface,
         borderRadius: 16,
         padding: 14,
         gap: 8,
         opacity: pressed ? 0.75 : 1,
-        shadowColor: "#2E2E2E",
-        shadowOpacity: 0.06,
+        shadowColor: theme.dark ? "#000" : "#2E2E2E",
+        shadowOpacity: theme.dark ? 0.4 : 0.06,
         shadowRadius: 6,
         elevation: 2,
+        borderWidth: theme.dark ? 1 : 0,
+        borderColor: theme.cardBorder,
       })}
     >
       <Text style={{ fontSize: 28 }}>{icon}</Text>
@@ -216,7 +270,7 @@ function GuideCard({
         style={{
           fontFamily: "Nunito_700Bold",
           fontSize: 13,
-          color: colors.texto,
+          color: theme.text,
           lineHeight: 18,
         }}
       >
@@ -226,7 +280,7 @@ function GuideCard({
         style={{
           fontFamily: "Nunito_400Regular",
           fontSize: 12,
-          color: "#9CA3AF",
+          color: theme.textMuted,
         }}
       >
         ⏱ {duration}
@@ -244,6 +298,7 @@ function AchievementBadge({
   label: string;
   unlocked: boolean;
 }) {
+  const theme = useTheme();
   return (
     <View
       style={{
@@ -258,11 +313,17 @@ function AchievementBadge({
           width: 52,
           height: 52,
           borderRadius: 26,
-          backgroundColor: unlocked ? "#E8F7F0" : "#F3F4F6",
+          backgroundColor: unlocked
+            ? theme.dark
+              ? "#14532D"
+              : "#E8F7F0"
+            : theme.dark
+              ? "#1E293B"
+              : "#F3F4F6",
           alignItems: "center",
           justifyContent: "center",
           borderWidth: unlocked ? 2 : 1,
-          borderColor: unlocked ? colors.verde : "#E5E7EB",
+          borderColor: unlocked ? colors.verde : theme.border,
         }}
       >
         <Text style={{ fontSize: 24 }}>{icon}</Text>
@@ -271,7 +332,7 @@ function AchievementBadge({
         style={{
           fontFamily: "Nunito_600SemiBold",
           fontSize: 11,
-          color: colors.texto,
+          color: theme.text,
           textAlign: "center",
           lineHeight: 14,
         }}
@@ -283,14 +344,12 @@ function AchievementBadge({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Screen
-// ---------------------------------------------------------------------------
-
 export default function HomeScreen() {
+  const theme = useTheme();
   const name = useUserStore((s) => s.name);
   const addXP = useUserStore((s) => s.addXP);
   const { todayTasks, completeTask, todayXP } = useTasksStore();
+  const { scheme, toggle } = useThemeStore();
 
   const handleCompleteTask = (id: string) => {
     const task = todayTasks.find((t) => t.id === id);
@@ -300,36 +359,74 @@ export default function HomeScreen() {
     }
   };
 
+  function handleLogout() {
+    Alert.alert("Sair da conta", "Tem certeza que deseja sair?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Sair",
+        style: "destructive",
+        onPress: () => {
+          router.replace("/(auth)/login");
+          signOut().catch((e) => console.error("[logout]", e));
+        },
+      },
+    ]);
+  }
+
   const pendingTasks = todayTasks.filter((t) => !t.completed);
   const completedTasks = todayTasks.filter((t) => t.completed);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.fundo }}>
+    <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <StatusBar barStyle="light-content" backgroundColor={colors.verde} />
 
+      {/* Cabeçalho verde */}
       <SafeAreaView edges={["top"]} style={{ backgroundColor: colors.verde }}>
         <View
           style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 }}
         >
-          <Text
+          <View
             style={{
-              fontFamily: "Nunito_400Regular",
-              fontSize: 14,
-              color: "rgba(255,255,255,0.8)",
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
             }}
           >
-            {greeting()} 👋
-          </Text>
-          <Text
-            style={{
-              fontFamily: "Nunito_800ExtraBold",
-              fontSize: 24,
-              color: "#fff",
-              marginBottom: 16,
-            }}
-          >
-            {name || "Bem-vindo!"}
-          </Text>
+            {/* Saudação */}
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontFamily: "Nunito_400Regular",
+                  fontSize: 14,
+                  color: "rgba(255,255,255,0.8)",
+                }}
+              >
+                {greeting()} 👋
+              </Text>
+              <Text
+                style={{
+                  fontFamily: "Nunito_800ExtraBold",
+                  fontSize: 24,
+                  color: "#fff",
+                  marginBottom: 16,
+                }}
+              >
+                {name || "Bem-vindo!"}
+              </Text>
+            </View>
+
+            {/* Botões de ação */}
+            <View style={{ flexDirection: "row", gap: 8, paddingTop: 4 }}>
+              <HeaderAction onPress={toggle}>
+                {scheme === "dark"
+                  ? <Sun size={18} color="#ffffff" />
+                  : <Moon size={18} color="#ffffff" />}
+              </HeaderAction>
+              <HeaderAction onPress={handleLogout}>
+                <LogOut size={18} color="#ffffff" />
+              </HeaderAction>
+            </View>
+          </View>
         </View>
         <XPCard />
       </SafeAreaView>
@@ -346,7 +443,7 @@ export default function HomeScreen() {
           onAction={() => {}}
         />
 
-        {/* 2. Today's tasks */}
+        {/* 2. Tarefas de hoje */}
         <View>
           <SectionTitle
             title="Hoje na sua casa"
@@ -366,7 +463,7 @@ export default function HomeScreen() {
                 style={{
                   fontFamily: "Nunito_400Regular",
                   fontSize: 13,
-                  color: "#6B7280",
+                  color: theme.textMuted,
                 }}
               >
                 {completedTasks.length} de {todayTasks.length} concluídas
@@ -397,7 +494,7 @@ export default function HomeScreen() {
               style={{
                 fontFamily: "Nunito_400Regular",
                 fontSize: 14,
-                color: "#9CA3AF",
+                color: theme.textMuted,
                 textAlign: "center",
                 paddingVertical: 16,
               }}
@@ -407,9 +504,9 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* 3. Emergency button */}
+        {/* 3. Botão de socorro */}
         <Pressable
-          onPress={() => router.navigate("/emergency" as any)}
+          onPress={() => router.push("/emergency")}
           style={({ pressed }) => ({
             backgroundColor: colors.laranja,
             borderRadius: 20,
@@ -445,7 +542,7 @@ export default function HomeScreen() {
           </Text>
         </Pressable>
 
-        {/* 4. Guides grid */}
+        {/* 4. Guias rápidos */}
         <View>
           <SectionTitle
             title="Guias rápidos"
@@ -462,7 +559,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* 5. Achievements */}
+        {/* 5. Conquistas */}
         <View>
           <SectionTitle
             title="Conquistas"

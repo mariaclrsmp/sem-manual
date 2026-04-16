@@ -1,27 +1,25 @@
-import { useClientOnlyValue } from "@/components/useClientOnlyValue";
 import { colors } from "@/src/constants/theme";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { useThemeStore } from "@/src/stores/themeStore";
+import { BarChart2, BookOpen, Home, ListTodo } from "lucide-react-native";
 import { Tabs } from "expo-router";
 
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>["name"];
-  color: string;
-}) {
-  return <FontAwesome size={22} style={{ marginBottom: -3 }} {...props} />;
-}
-
 export default function TabLayout() {
+  const dark = useThemeStore((s) => s.scheme === "dark");
+
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.verde,
-        tabBarInactiveTintColor: "#9CA3AF",
-        tabBarStyle: { backgroundColor: "#FFFFFF" },
-        headerShown: useClientOnlyValue(false, true),
+        tabBarInactiveTintColor: dark ? "#64748B" : "#9CA3AF",
+        tabBarStyle: {
+          backgroundColor: dark ? "#1E293B" : "#FFFFFF",
+          borderTopColor: dark ? "#334155" : "#E5E7EB",
+        },
         tabBarLabelStyle: {
           fontFamily: "Nunito_400Regular",
           alignItems: "center",
         },
+        headerShown: false,
       }}
     >
       <Tabs.Screen
@@ -29,7 +27,7 @@ export default function TabLayout() {
         options={{
           title: "Início",
           headerShown: false,
-          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+          tabBarIcon: ({ color }) => <Home size={22} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -37,9 +35,7 @@ export default function TabLayout() {
         options={{
           title: "Tarefas",
           headerShown: false,
-          tabBarIcon: ({ color }) => (
-            <TabBarIcon name="check-square-o" color={color} />
-          ),
+          tabBarIcon: ({ color }) => <ListTodo size={22} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -47,7 +43,7 @@ export default function TabLayout() {
         options={{
           title: "Guias",
           headerShown: false,
-          tabBarIcon: ({ color }) => <TabBarIcon name="book" color={color} />,
+          tabBarIcon: ({ color }) => <BookOpen size={22} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -55,9 +51,7 @@ export default function TabLayout() {
         options={{
           title: "Progresso",
           headerShown: false,
-          tabBarIcon: ({ color }) => (
-            <TabBarIcon name="bar-chart" color={color} />
-          ),
+          tabBarIcon: ({ color }) => <BarChart2 size={22} color={color} />,
         }}
       />
     </Tabs>
