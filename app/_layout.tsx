@@ -13,8 +13,8 @@ import { useEffect, useRef } from "react";
 import "react-native-reanimated";
 
 import {
-  getPushToken,
-  saveTokenToSupabase,
+  requestPermission,
+  savePushToken,
   scheduleDailyReminder,
 } from "@/src/services/notificationsService";
 import { useAuthStore } from "@/src/stores/authStore";
@@ -87,20 +87,20 @@ function RootLayoutNav() {
   }, [session, isInitialized, name]);
 
   useEffect(() => {
-    async function initNotifications() {
-      const token = await getPushToken();
-      if (token) await saveTokenToSupabase(token);
-      await scheduleDailyReminder();
+    if (session) {
+      requestPermission().then((granted) => {
+        if (granted) {
+          scheduleDailyReminder();
+          savePushToken(session.user.id);
+        }
+      });
     }
+  }, [session]);
 
-    initNotifications();
-
+  useEffect(() => {
     notificacaoListener.current = Notifications.addNotificationReceivedListener(
       (notificacao) => {
-        console.log(
-          "[Notificação recebida]",
-          notificacao.request.content.title,
-        );
+        console.log("[Notificação recebida]", notificacao.request.content.title);
       },
     );
 

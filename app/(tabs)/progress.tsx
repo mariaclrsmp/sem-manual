@@ -70,15 +70,27 @@ function MetricCard({ label, value, emoji }: MetricCardProps) {
 function AchievementBadge({
   achievement,
   unlocked,
+  unlockedAt,
 }: {
   achievement: (typeof ACHIEVEMENTS)[number]
   unlocked: boolean
+  unlockedAt?: string
 }) {
   const theme = useTheme()
 
   function handlePress() {
     if (unlocked) {
-      Alert.alert(achievement.title, `${achievement.emoji} Desbloqueado!\n\n${achievement.description}`)
+      const dateLabel = unlockedAt
+        ? new Date(unlockedAt).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+          })
+        : null
+      Alert.alert(
+        achievement.title,
+        `${achievement.emoji} ${achievement.description}${dateLabel ? `\n\nDesbloqueado em ${dateLabel}` : ''}`,
+      )
     } else {
       Alert.alert('🔒 Bloqueado', `Como desbloquear:\n${achievement.description}`, [
         { text: 'Ok' },
@@ -158,7 +170,8 @@ export default function ProgressScreen() {
   const { emoji, label, levelProgress, currentLevelXP, levelTotalXP, nextLabel } =
     useCurrentLevelInfo()
   const xpToNextLevel = useUserStore((s) => s.xpToNextLevel)
-  const unlockedIds = useUserStore((s) => s.achievements)
+  const achievements = useUserStore((s) => s.achievements)
+  const unlockedMap = new Map(achievements.map((a) => [a.id, a.unlockedAt]))
   const todayTasks = useTasksStore((s) => s.todayTasks)
 
   const tasksCompleted = todayTasks.filter((t) => t.completed).length
@@ -314,7 +327,7 @@ export default function ProgressScreen() {
                 color: theme.textMuted,
               }}
             >
-              {unlockedIds.length}/{ACHIEVEMENTS.length}
+              {unlockedMap.size}/{ACHIEVEMENTS.length}
             </Text>
           </View>
 
@@ -329,7 +342,8 @@ export default function ProgressScreen() {
               <AchievementBadge
                 key={achievement.id}
                 achievement={achievement}
-                unlocked={unlockedIds.includes(achievement.id)}
+                unlocked={unlockedMap.has(achievement.id)}
+                unlockedAt={unlockedMap.get(achievement.id)}
               />
             ))}
           </View>

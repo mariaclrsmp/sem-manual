@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import * as tasksService from "../services/tasksService";
+
 export type TaskCategory = "cleaning" | "grocery" | "home" | "pet";
 
 export interface TodayTask {
@@ -12,49 +14,14 @@ export interface TodayTask {
   xp: number;
 }
 
-const INITIAL_TASKS: TodayTask[] = [
-  {
-    id: "task-1",
-    title: "Lavar a louça do dia",
-    category: "cleaning",
-    completed: false,
-    xp: 15,
-  },
-  {
-    id: "task-2",
-    title: "Passar pano no banheiro",
-    category: "cleaning",
-    completed: false,
-    xp: 20,
-  },
-  {
-    id: "task-3",
-    title: "Verificar o que está acabando na geladeira",
-    category: "grocery",
-    completed: false,
-    xp: 10,
-  },
-  {
-    id: "task-4",
-    title: "Tirar o lixo",
-    category: "home",
-    completed: false,
-    xp: 10,
-  },
-  {
-    id: "task-5",
-    title: "Organizar a cama pela manhã",
-    category: "home",
-    completed: false,
-    xp: 5,
-  },
-];
-
 interface TasksState {
   todayTasks: TodayTask[];
   todayXP: number;
+  loading: boolean;
+  error: string | null;
 
-  completeTask: (id: string) => void;
+  loadTodayTasks: (userId: string) => Promise<void>;
+  completeTask: (id: string) => Promise<void>;
   addTask: (task: TodayTask) => void;
   resetDay: () => void;
 }
@@ -62,10 +29,25 @@ interface TasksState {
 export const useTasksStore = create<TasksState>()(
   persist(
     (set, get) => ({
-      todayTasks: INITIAL_TASKS,
+      todayTasks: [],
       todayXP: 0,
+      loading: false,
+      error: null,
 
-      completeTask: (id) => {
+      loadTodayTasks: async (userId) => {
+        set({ loading: true, error: null });
+        try {
+          const tasks = await tasksService.generateDailyTasks(userId);
+          const completedXP = tasks
+            .filter((t) => t.completed)
+            .reduce((sum, t) => sum + t.xp, 0);
+          set({ todayTasks: tasks, todayXP: completedXP, loading: false });
+        } catch (e) {
+          set({ loading: false, error: (e as Error).message });
+        }
+      },
+
+      completeTask: async (id) => {
         const task = get().todayTasks.find((t) => t.id === id);
         if (!task || task.completed) return;
 
@@ -75,6 +57,18 @@ export const useTasksStore = create<TasksState>()(
           ),
           todayXP: state.todayXP + task.xp,
         }));
+
+        try {
+          await tasksService.completeTask(id);
+        } catch (e) {
+          set((state) => ({
+            todayTasks: state.todayTasks.map((t) =>
+              t.id === id ? { ...t, completed: false } : t,
+            ),
+            todayXP: state.todayXP - task.xp,
+            error: (e as Error).message,
+          }));
+        }
       },
 
       addTask: (task) => {

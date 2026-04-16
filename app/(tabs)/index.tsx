@@ -14,9 +14,11 @@ import { TaskItem } from "@/src/components/features/TaskItem";
 import { Text } from "@/src/components/ui/Text";
 import { colors } from "@/src/constants/theme";
 import { signOut } from "@/src/services/authService";
+import { addSuggestionAsTask } from "@/src/services/suggestionsService";
 import { useTasksStore } from "@/src/stores/tasksStore";
 import { useThemeStore } from "@/src/stores/themeStore";
 import { useCurrentLevelInfo, useUserStore } from "@/src/stores/userStore";
+import type { Suggestion } from "@/src/stores/userStore";
 
 // Lê direto do store — não depende de Appearance.setColorScheme() propagar
 function useTheme() {
@@ -344,20 +346,38 @@ function AchievementBadge({
   );
 }
 
+function suggestionCardType(type: Suggestion["type"]): "tip" | "alert" | "achievement" {
+  if (type === "guide") return "achievement";
+  return "tip";
+}
+
 export default function HomeScreen() {
   const theme = useTheme();
   const name = useUserStore((s) => s.name);
-  const addXP = useUserStore((s) => s.addXP);
-  const { todayTasks, completeTask, todayXP } = useTasksStore();
+  const userId = useUserStore((s) => s.userId);
+  const suggestions = useUserStore((s) => s.suggestions);
+  const updateXP = useUserStore((s) => s.updateXP);
+  const { todayTasks, completeTask, loadTodayTasks, todayXP } = useTasksStore();
   const { scheme, toggle } = useThemeStore();
+
+  const firstSuggestion = suggestions[0] ?? null;
 
   const handleCompleteTask = (id: string) => {
     const task = todayTasks.find((t) => t.id === id);
     if (task && !task.completed) {
       completeTask(id);
-      addXP(task.xp);
+      updateXP(task.xp);
     }
   };
+
+  async function handleSuggestionAction() {
+    if (!firstSuggestion || !userId) return;
+    try {
+      await addSuggestionAsTask(userId, firstSuggestion);
+      await loadTodayTasks(userId);
+    } catch {
+    }
+  }
 
   function handleLogout() {
     Alert.alert("Sair da conta", "Tem certeza que deseja sair?", [
@@ -436,12 +456,20 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* 1. Proactive card */}
-        <ProactiveCard
-          type="tip"
-          message="Faz mais de 1 semana que o banheiro não é limpo. Que tal hoje?"
-          action="Adicionar na lista de hoje?"
-          onAction={() => {}}
-        />
+        {firstSuggestion ? (
+          <ProactiveCard
+            type={suggestionCardType(firstSuggestion.type)}
+            message={firstSuggestion.message}
+            action={firstSuggestion.actionLabel ?? "Adicionar na lista de hoje"}
+            onAction={handleSuggestionAction}
+          />
+        ) : (
+          <ProactiveCard
+            type="tip"
+            message={`Bem-vindo, ${name || "ao Sem Manual"}! Explore os guias e comece sua primeira tarefa. 🏠`}
+            onAction={undefined}
+          />
+        )}
 
         {/* 2. Tarefas de hoje */}
         <View>
