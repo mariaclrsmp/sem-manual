@@ -59,8 +59,8 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
 
-  const { session, isInitialized, initialize } = useAuthStore();
-  const name = useUserStore((s) => s.name);
+  const { session, loading: authLoading, initialize } = useAuthStore();
+  const userName = useUserStore((s) => s.user?.name);
 
   const notificacaoListener = useRef<Notifications.EventSubscription | null>(
     null,
@@ -72,19 +72,19 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
-    if (!isInitialized) return;
+    if (authLoading) return;
 
     const inAuthGroup = segments[0] === "(auth)";
     const inOnboarding = segments[0] === "onboarding";
 
     if (!session) {
       if (!inAuthGroup) router.replace("/(auth)/login");
-    } else if (!name) {
+    } else if (!userName) {
       if (!inOnboarding) router.replace("/onboarding");
     } else {
       if (inAuthGroup || inOnboarding) router.replace("/(tabs)");
     }
-  }, [session, isInitialized, name]);
+  }, [session, authLoading, userName]);
 
   useEffect(() => {
     if (session) {

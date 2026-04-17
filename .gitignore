@@ -42,4 +42,5 @@ yarn-error.*
 /android
 
 CLAUDE.md
+supabase/.temp
 
