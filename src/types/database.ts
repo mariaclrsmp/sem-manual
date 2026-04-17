@@ -1,21 +1,11 @@
-export interface UserProfile {
-  home_type: 'studio' | 'apartment' | 'house'
-  has_pet: boolean
-  lifestyle: 'survivor' | 'organized' | 'fitness' | 'saver'
-  diagnostic_result?: {
-    level: string
-    score: number
-    categories: Record<string, number>
-  }
-  push_token?: string
-}
-
 export interface User {
   id: string
   name: string
   xp_total: number
   level: 'beginner' | 'learner' | 'independent' | 'master'
-  profile: UserProfile
+  home_type: 'studio' | 'apartment' | 'house' | null
+  has_pet: boolean | null
+  push_token: string | null
   created_at: string
 }
 

@@ -353,10 +353,14 @@ function suggestionCardType(type: Suggestion["type"]): "tip" | "alert" | "achiev
 
 export default function HomeScreen() {
   const theme = useTheme();
-  const name = useUserStore((s) => s.name);
-  const userId = useUserStore((s) => s.userId);
+  const user = useUserStore((s) => s.user);
+  const name = user?.name ?? '';
+  const userId = user?.id ?? null;
   const suggestions = useUserStore((s) => s.suggestions);
-  const { todayTasks, completeTask, loadTodayTasks, todayXP } = useTasksStore();
+  const { todayTasks, completeTask, loadTodayTasks } = useTasksStore();
+  const todayXP = todayTasks
+    .filter((t) => t.completed)
+    .reduce((sum, t) => sum + t.xp, 0);
   const { scheme, toggle } = useThemeStore();
 
   const firstSuggestion = suggestions[0] ?? null;

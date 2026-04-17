@@ -1,5 +1,6 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 
+import type { User } from '../types/database'
 import type { UserProfile } from '../stores/profileStore'
 import type { UserLevel } from '../stores/userStore'
 import { supabase } from './supabase'
@@ -8,8 +9,8 @@ export interface RemoteProfile {
   name: string
   xp_total: number
   level: UserLevel
-  home_type?: string
-  has_pet?: boolean
+  home_type?: string | null
+  has_pet?: boolean | null
   push_token?: string | null
 }
 
@@ -31,13 +32,13 @@ function resolveLevel(xp: number): UserLevel {
 
 export async function fetchProfile(
   userId: string,
-): Promise<{ data: RemoteProfile | null; error: PostgrestError | null }> {
+): Promise<{ data: User | null; error: PostgrestError | null }> {
   const { data, error } = await supabase
     .from('users')
-    .select('name, xp_total, level, home_type, has_pet, push_token')
+    .select('id, name, xp_total, level, home_type, has_pet, push_token, created_at')
     .eq('id', userId)
     .single()
-  return { data: data as RemoteProfile | null, error }
+  return { data: data as User | null, error }
 }
 
 export async function fetchAchievements(

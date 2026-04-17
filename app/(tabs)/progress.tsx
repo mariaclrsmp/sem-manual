@@ -167,11 +167,10 @@ function AchievementBadge({
 
 export default function ProgressScreen() {
   const theme = useTheme()
-  const { emoji, label, levelProgress, currentLevelXP, levelTotalXP, nextLabel } =
+  const { emoji, label, levelProgress, currentLevelXP, levelTotalXP, nextLabel, xpToNextLevel } =
     useCurrentLevelInfo()
-  const xpToNextLevel = useUserStore((s) => s.xpToNextLevel)
   const achievements = useUserStore((s) => s.achievements)
-  const unlockedMap = new Map(achievements.map((a) => [a.id, a.unlockedAt]))
+  const unlockedMap = new Map(achievements.map((a) => [a.achievement_id, a.unlocked_at]))
   const todayTasks = useTasksStore((s) => s.todayTasks)
 
   const tasksCompleted = todayTasks.filter((t) => t.completed).length
