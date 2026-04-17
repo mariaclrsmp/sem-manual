@@ -8,6 +8,6 @@ export type {
   Event,
   EventType,
   Achievement,
-  GuideRead,
+  ReadGuide,
   Suggestion,
 } from './database';

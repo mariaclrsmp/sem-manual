@@ -121,10 +121,10 @@ function RootLayoutNav() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
-        <Stack.Screen name="onboarding/index" />
+        <Stack.Screen name="onboarding" />
         <Stack.Screen name="guides/[id]" />
-        <Stack.Screen name="diagnostic/index" />
-        <Stack.Screen name="emergency/index" />
+        <Stack.Screen name="diagnostic" />
+        <Stack.Screen name="emergency" />
         <Stack.Screen name="emergency/[situation]" />
         <Stack.Screen
           name="modal"

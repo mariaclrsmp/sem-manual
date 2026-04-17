@@ -14,7 +14,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export interface Routine {
+export interface RoutineReminder {
   id: string;
   name: string;
   deadline: Date;
@@ -76,7 +76,7 @@ export async function scheduleDailyReminder(): Promise<void> {
   }
 }
 
-export async function scheduleRoutineReminder(routine: Routine): Promise<string> {
+export async function scheduleRoutineReminder(routine: RoutineReminder): Promise<string> {
   const now = new Date();
   const oneHourBefore = new Date(routine.deadline.getTime() - 60 * 60 * 1000);
   const fireAt = oneHourBefore > now

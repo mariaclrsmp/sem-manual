@@ -356,27 +356,19 @@ export default function HomeScreen() {
   const name = useUserStore((s) => s.name);
   const userId = useUserStore((s) => s.userId);
   const suggestions = useUserStore((s) => s.suggestions);
-  const updateXP = useUserStore((s) => s.updateXP);
   const { todayTasks, completeTask, loadTodayTasks, todayXP } = useTasksStore();
   const { scheme, toggle } = useThemeStore();
 
   const firstSuggestion = suggestions[0] ?? null;
 
   const handleCompleteTask = (id: string) => {
-    const task = todayTasks.find((t) => t.id === id);
-    if (task && !task.completed) {
-      completeTask(id);
-      updateXP(task.xp);
-    }
+    completeTask(id);
   };
 
   async function handleSuggestionAction() {
     if (!firstSuggestion || !userId) return;
-    try {
-      await addSuggestionAsTask(userId, firstSuggestion);
-      await loadTodayTasks(userId);
-    } catch {
-    }
+    const { error } = await addSuggestionAsTask(userId, firstSuggestion);
+    if (!error) await loadTodayTasks(userId);
   }
 
   function handleLogout() {
@@ -386,8 +378,9 @@ export default function HomeScreen() {
         text: "Sair",
         style: "destructive",
         onPress: () => {
-          router.replace("/(auth)/login");
-          signOut().catch((e) => console.error("[logout]", e));
+          signOut().then(({ error }) => {
+            if (error) console.error("[logout]", error.message);
+          });
         },
       },
     ]);

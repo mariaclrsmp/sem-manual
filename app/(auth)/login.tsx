@@ -14,16 +14,14 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
 
   async function handleGoogleSignIn() {
-    try {
-      setLoading(true);
-      setError(null);
-      await signInWithGoogle();
-    } catch (err) {
+    setLoading(true);
+    setError(null);
+    const { error: authError } = await signInWithGoogle();
+    if (authError) {
       setError("Não foi possível entrar. Tente novamente.");
-      console.error("[Auth] signInWithGoogle:", err);
-    } finally {
-      setLoading(false);
+      console.error("[Auth] signInWithGoogle:", authError.message);
     }
+    setLoading(false);
   }
 
   return (

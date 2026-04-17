@@ -14,7 +14,7 @@ export interface User {
   id: string
   name: string
   xp_total: number
-  level: 'beginner' | 'apprentice' | 'independent' | 'master'
+  level: 'beginner' | 'learner' | 'independent' | 'master'
   profile: UserProfile
   created_at: string
 }
@@ -23,7 +23,7 @@ export interface Task {
   id: string
   user_id: string
   title: string
-  category: 'cleaning' | 'shopping' | 'home' | 'pet' | 'maintenance'
+  category: 'cleaning' | 'grocery' | 'home' | 'pet' | 'maintenance'
   completed: boolean
   xp: number
   date: string
@@ -63,7 +63,7 @@ export interface Achievement {
   unlocked_at: string
 }
 
-export interface GuideRead {
+export interface ReadGuide {
   user_id: string
   guide_id: string
   read_at: string
