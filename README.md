@@ -1,6 +1,8 @@
 # 🏠 Sem Manual
 
 > **O app para quem está aprendendo a morar sozinho**
+>
+> 
 > A vida adulta é um jogo Sem Manual e esse é o seu guia.
 
 ---
