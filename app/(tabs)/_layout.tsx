@@ -1,12 +1,18 @@
 import { colors } from "@/src/constants/theme";
+import { XPNotification } from "@/src/components/features/XPNotification";
 import { useThemeStore } from "@/src/stores/themeStore";
+import { useUserStore } from "@/src/stores/userStore";
 import { BarChart2, BookOpen, Home, ListTodo } from "lucide-react-native";
 import { Tabs } from "expo-router";
+import { View } from "react-native";
 
 export default function TabLayout() {
   const dark = useThemeStore((s) => s.scheme === "dark");
+  const notification = useUserStore((s) => s.notification);
+  const clearNotification = useUserStore((s) => s.clearNotification);
 
   return (
+    <View style={{ flex: 1 }}>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.verde,
@@ -55,5 +61,16 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    {notification?.visible && (
+      <XPNotification
+        key={notification.seq}
+        visible={notification.visible}
+        type={notification.type}
+        xpAmount={notification.xpAmount}
+        achievementTitle={notification.achievementTitle}
+        onDismiss={clearNotification}
+      />
+    )}
+    </View>
   );
 }

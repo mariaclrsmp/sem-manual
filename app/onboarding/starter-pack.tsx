@@ -1,4 +1,5 @@
 import * as Sharing from 'expo-sharing'
+import { router } from 'expo-router'
 import { useRef } from 'react'
 import {
   ActivityIndicator,
@@ -198,6 +199,13 @@ export default function StarterPackScreen() {
         >
           <Text style={styles.shareButtonText}>📤 Compartilhar meu starter pack</Text>
         </Pressable>
+
+        <Pressable
+          onPress={() => router.replace('/(tabs)')}
+          style={({ pressed }) => [styles.continueButton, { opacity: pressed ? 0.85 : 1 }]}
+        >
+          <Text style={styles.continueButtonText}>Começar a usar o app →</Text>
+        </Pressable>
       </ScrollView>
     </View>
   )
@@ -316,5 +324,17 @@ const styles = StyleSheet.create({
     fontFamily: fonts.extrabold,
     fontSize: 16,
     color: '#fff',
+  },
+  continueButton: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.verde,
+  },
+  continueButtonText: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: colors.verde,
   },
 })

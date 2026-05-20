@@ -9,11 +9,12 @@ interface PushNotification {
 
 interface UserRow {
   id: string
-  push_token: string
+  profile: { push_token?: string } | null
 }
 
 interface SuggestionRow {
   id: string
+  user_id: string
   message: string
 }
 
@@ -26,18 +27,16 @@ interface ExpoTicket {
 const TITLE = 'Sem Manual'
 
 const FALLBACK_MESSAGES = [
-  'Bom dia! Que tal manter a casa em ordem hoje? 🏠',
-  'Bom dia! Pequenas tarefas diárias fazem grande diferença. ✨',
-  'Bom dia! Sua casa, suas regras — e você está indo bem. 🌱',
+  'Bom dia! Que tal manter a casa em ordem hoje?',
+  'Bom dia! Pequenas tarefas diarias fazem grande diferenca.',
+  'Bom dia! Sua casa, suas regras — e voce esta indo bem.',
 ]
 
 function fallbackMessage(): string {
   return FALLBACK_MESSAGES[Math.floor(Math.random() * FALLBACK_MESSAGES.length)]
 }
 
-async function sendBatch(
-  notifications: PushNotification[],
-): Promise<ExpoTicket[]> {
+async function sendBatch(notifications: PushNotification[]): Promise<ExpoTicket[]> {
   const res = await fetch('https://exp.host/--/api/v2/push/send', {
     method: 'POST',
     headers: {
@@ -47,7 +46,6 @@ async function sendBatch(
     },
     body: JSON.stringify(notifications),
   })
-
   const json = await res.json()
   return (json.data ?? []) as ExpoTicket[]
 }
@@ -62,10 +60,11 @@ Deno.serve(async () => {
 
   const today = new Date().toISOString().split('T')[0]
 
-  const { data: usersWithToken, error: usersError } = await supabase
+  // push_token fica dentro do JSONB profile
+  const { data: usersData, error: usersError } = await supabase
     .from('users')
-    .select('id, push_token')
-    .not('push_token', 'is', null)
+    .select('id, profile')
+    .not('profile', 'is', null)
 
   if (usersError) {
     return new Response(JSON.stringify({ error: usersError.message }), {
@@ -74,7 +73,9 @@ Deno.serve(async () => {
     })
   }
 
-  const users = (usersWithToken ?? []) as UserRow[]
+  const users = ((usersData ?? []) as UserRow[]).filter(
+    (u) => u.profile?.push_token,
+  )
 
   if (users.length === 0) {
     return new Response(
@@ -93,7 +94,7 @@ Deno.serve(async () => {
     .eq('read', false)
 
   const suggestionsByUser = new Map<string, SuggestionRow>()
-  for (const s of (suggestions ?? []) as (SuggestionRow & { user_id: string })[]) {
+  for (const s of (suggestions ?? []) as SuggestionRow[]) {
     if (!suggestionsByUser.has(s.user_id)) {
       suggestionsByUser.set(s.user_id, s)
     }
@@ -103,22 +104,18 @@ Deno.serve(async () => {
   const notificationMeta: { user_id: string; suggestion_id?: string }[] = []
 
   for (const user of users) {
+    const token = user.profile!.push_token!
     const suggestion = suggestionsByUser.get(user.id)
-    const body = suggestion
-      ? `Bom dia! ${suggestion.message} 🏠`
-      : fallbackMessage()
+    const body = suggestion ? suggestion.message : fallbackMessage()
 
     notifications.push({
-      to: user.push_token,
+      to: token,
       title: TITLE,
       body,
       data: { suggestionId: suggestion?.id ?? null, date: today },
     })
 
-    notificationMeta.push({
-      user_id: user.id,
-      suggestion_id: suggestion?.id,
-    })
+    notificationMeta.push({ user_id: user.id, suggestion_id: suggestion?.id })
   }
 
   const BATCH_SIZE = 100
@@ -152,9 +149,7 @@ Deno.serve(async () => {
       date: today,
       sent: successUserIds.length,
       failed: failed.length,
-      ...(failed.length > 0 && {
-        errors: failed.map((t) => t.message),
-      }),
+      ...(failed.length > 0 && { errors: failed.map((t) => t.message) }),
     }),
     { headers: { 'Content-Type': 'application/json' } },
   )

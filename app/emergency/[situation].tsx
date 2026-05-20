@@ -344,7 +344,7 @@ export default function EmergencySituationScreen() {
             onPress={() =>
               router.push({
                 pathname: "/guides/[id]",
-                params: { id: data.guideId },
+                params: { id: data.guideId! },
               })
             }
             style={({ pressed }) => ({

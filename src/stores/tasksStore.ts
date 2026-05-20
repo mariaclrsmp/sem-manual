@@ -42,7 +42,7 @@ export const useTasksStore = create<TasksState>()((set, get) => ({
       ),
     }))
 
-    const userId = useUserStore.getState().userId
+    const userId = useUserStore.getState().user?.id ?? null
     if (!userId) return
 
     const { error } = await tasksService.completeTask(taskId, userId)

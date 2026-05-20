@@ -44,3 +44,4 @@ yarn-error.*
 CLAUDE.md
 supabase/.temp
 
+supabase/migrations/20240103000000_pg_cron.sql

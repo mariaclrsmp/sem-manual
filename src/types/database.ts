@@ -1,7 +1,7 @@
 export interface User {
   id: string
   name: string
-  xp_total: number
+  total_xp: number
   level: 'beginner' | 'learner' | 'independent' | 'master'
   home_type: 'studio' | 'apartment' | 'house' | null
   has_pet: boolean | null
@@ -59,10 +59,13 @@ export interface ReadGuide {
   read_at: string
 }
 
-export interface Suggestion {
+export interface DailySuggestion {
   id: string
+  user_id: string
   message: string
-  action?: string
-  type: 'alert' | 'tip' | 'achievement'
-  routine_id?: string
+  action: string | null
+  type: 'tip' | 'task' | 'guide'
+  date: string
+  read: boolean
+  routine_id: string | null
 }

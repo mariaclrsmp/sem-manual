@@ -6,10 +6,11 @@ import { colors } from '@/src/constants/theme';
 import type { TaskCategory, TodayTask } from '@/src/stores/tasksStore';
 
 const CATEGORY_CONFIG: Record<TaskCategory, { label: string; color: string; background: string }> = {
-  cleaning: { label: 'Limpeza', color: colors.azul,   background: '#EAF0F9' },
-  grocery:  { label: 'Mercado', color: '#6B7280',      background: '#F3F4F6' },
-  home:     { label: 'Casa',    color: colors.verde,   background: '#E8F7F0' },
-  pet:      { label: 'Pet',     color: colors.laranja, background: '#FFF3EB' },
+  cleaning:    { label: 'Limpeza',    color: colors.azul,   background: '#EAF0F9' },
+  grocery:     { label: 'Mercado',    color: '#6B7280',      background: '#F3F4F6' },
+  home:        { label: 'Casa',       color: colors.verde,   background: '#E8F7F0' },
+  pet:         { label: 'Pet',        color: colors.laranja, background: '#FFF3EB' },
+  maintenance: { label: 'Manutenção', color: '#6B7280',      background: '#F3F4F6' },
 };
 
 interface TaskItemProps {

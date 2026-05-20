@@ -6,6 +6,12 @@ import * as routinesService from './routinesService'
 import * as tasksService from './tasksService'
 import { supabase } from './supabase'
 
+const VALID_TASK_CATEGORIES = new Set(['cleaning', 'grocery', 'home', 'pet', 'maintenance'])
+
+function toTaskCategory(raw: string): Task['category'] {
+  return VALID_TASK_CATEGORIES.has(raw) ? (raw as Task['category']) : 'home'
+}
+
 interface OverdueRoutine {
   id: string
   title: string
@@ -31,26 +37,90 @@ function buildOverdueSuggestion(routine: OverdueRoutine): Suggestion {
 
   return {
     id: `routine:${routine.id}`,
-    message: `It's been ${daysAgo} day${daysAgo !== 1 ? 's' : ''} since you ${routine.title.toLowerCase()}`,
+    message: `Faz ${daysAgo} dia${daysAgo !== 1 ? 's' : ''} desde que voce ${routine.title.toLowerCase()}`,
     type: 'task',
-    actionLabel: "Add to today's list?",
+    actionLabel: 'Adicionar a lista de hoje?',
     routineId: routine.id,
     category: routine.category,
   }
 }
 
-export async function generateDailySuggestions(
-  userId: string,
-): Promise<Suggestion[]> {
-  const suggestions: Suggestion[] = []
-
-  const { data: overdue } = await supabase
-    .from('rotinas_atrasadas')
+async function fetchOverdueRoutines(userId: string): Promise<OverdueRoutine[]> {
+  const { data } = await supabase
+    .from('routines')
     .select('id, title, category, frequency_days, last_done')
     .eq('user_id', userId)
-    .limit(2)
+    .eq('active', true)
 
-  for (const routine of (overdue ?? []) as OverdueRoutine[]) {
+  if (!data) return []
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  return (data as OverdueRoutine[]).filter((r) => {
+    if (!r.last_done) return true
+    const due = new Date(r.last_done)
+    due.setDate(due.getDate() + r.frequency_days)
+    return due <= today
+  })
+}
+
+async function loadTodaySuggestions(userId: string): Promise<Suggestion[] | null> {
+  const today = new Date().toISOString().split('T')[0]
+
+  const { data, error } = await supabase
+    .from('daily_suggestions')
+    .select('id, message, action, type, routine_id')
+    .eq('user_id', userId)
+    .eq('date', today)
+    .eq('read', false)
+    .order('id', { ascending: true })
+
+  if (error || !data || data.length === 0) return null
+
+  return data.map((row: {
+    id: string
+    message: string
+    action: string | null
+    type: string
+    routine_id: string | null
+  }) => ({
+    id: row.id,
+    message: row.message,
+    type: row.type as Suggestion['type'],
+    actionLabel: row.action ?? undefined,
+    routineId: row.routine_id ?? undefined,
+  }))
+}
+
+async function persistSuggestions(userId: string, suggestions: Suggestion[]): Promise<void> {
+  if (suggestions.length === 0) return
+
+  const today = new Date().toISOString().split('T')[0]
+
+  const rows = suggestions.map((s) => ({
+    user_id: userId,
+    message: s.message,
+    action: s.actionLabel ?? null,
+    type: s.type,
+    date: today,
+    read: false,
+    routine_id: s.routineId ?? null,
+  }))
+
+  await supabase
+    .from('daily_suggestions')
+    .upsert(rows, { onConflict: 'user_id,message,date', ignoreDuplicates: true })
+}
+
+export async function generateDailySuggestions(userId: string): Promise<Suggestion[]> {
+  const cached = await loadTodaySuggestions(userId)
+  if (cached) return cached
+
+  const suggestions: Suggestion[] = []
+
+  const overdue = await fetchOverdueRoutines(userId)
+  for (const routine of overdue.slice(0, 2)) {
     suggestions.push(buildOverdueSuggestion(routine))
   }
 
@@ -61,9 +131,9 @@ export async function generateDailySuggestions(
     if (!hasCleaningCovered) {
       suggestions.push({
         id: 'special:saturday_cleaning',
-        message: "Saturday is a great day for a deep clean",
+        message: 'Sabado e um otimo dia para uma faxina geral',
         type: 'tip',
-        actionLabel: "Add to today's list?",
+        actionLabel: 'Adicionar a lista de hoje?',
         category: 'cleaning',
       })
     }
@@ -72,14 +142,24 @@ export async function generateDailySuggestions(
   if (suggestions.length < 3 && dayOfWeek === 0) {
     suggestions.push({
       id: 'special:sunday_planning',
-      message: "Organize your week: check what needs to be done at home",
+      message: 'Organize sua semana: veja o que precisa ser feito em casa',
       type: 'tip',
-      actionLabel: "Plan the week",
+      actionLabel: 'Planejar a semana',
       category: 'home',
     })
   }
 
-  return suggestions.slice(0, 3)
+  const result = suggestions.slice(0, 3)
+  await persistSuggestions(userId, result)
+  return result
+}
+
+export async function markSuggestionRead(suggestionId: string): Promise<void> {
+  if (suggestionId.startsWith('routine:') || suggestionId.startsWith('special:')) return
+  await supabase
+    .from('daily_suggestions')
+    .update({ read: true })
+    .eq('id', suggestionId)
 }
 
 export async function addSuggestionAsTask(
@@ -87,7 +167,7 @@ export async function addSuggestionAsTask(
   suggestion: Suggestion,
 ): Promise<{ data: Task | null; error: PostgrestError | null }> {
   const today = new Date().toISOString().split('T')[0]
-  const category = (suggestion.category ?? 'home') as Task['category']
+  const category = toTaskCategory(suggestion.category ?? 'home')
 
   const { data, error } = await tasksService.createTask({
     user_id: userId,
@@ -102,6 +182,10 @@ export async function addSuggestionAsTask(
 
   if (suggestion.routineId) {
     await routinesService.updateLastDone(suggestion.routineId)
+  }
+
+  if (suggestion.id && !suggestion.id.startsWith('routine:') && !suggestion.id.startsWith('special:')) {
+    await markSuggestionRead(suggestion.id)
   }
 
   return { data, error: null }

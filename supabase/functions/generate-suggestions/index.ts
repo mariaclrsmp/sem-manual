@@ -1,21 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-interface OverdueRoutine {
+interface Routine {
   id: string
   user_id: string
   title: string
   category: string
   frequency_days: number
   last_done: string | null
-}
-
-interface DailySuggestion {
-  user_id: string
-  message: string
-  action?: string
-  type: 'alert' | 'tip'
-  date: string
-  routine_id?: string
 }
 
 Deno.serve(async () => {
@@ -50,42 +41,65 @@ Deno.serve(async () => {
 
   for (const user of activeUsers) {
     try {
-      const suggestions: DailySuggestion[] = []
+      const suggestions: {
+        user_id: string
+        message: string
+        action: string | null
+        type: 'tip' | 'task' | 'guide'
+        date: string
+        read: boolean
+        routine_id: string | null
+      }[] = []
 
-      const { data: overdue } = await supabase
-        .from('rotinas_atrasadas')
+      const { data: routines } = await supabase
+        .from('routines')
         .select('id, user_id, title, category, frequency_days, last_done')
         .eq('user_id', user.id)
-        .order('last_done', { ascending: true, nullsFirst: true })
-        .limit(2)
+        .eq('active', true)
 
-      for (const routine of (overdue ?? []) as OverdueRoutine[]) {
+      const overdue = ((routines ?? []) as Routine[]).filter((r) => {
+        if (!r.last_done) return true
+        const nextDue = new Date(r.last_done)
+        nextDue.setDate(nextDue.getDate() + r.frequency_days)
+        return nextDue <= new Date()
+      }).slice(0, 2)
+
+      for (const routine of overdue) {
         const lastDone = routine.last_done ? new Date(routine.last_done) : null
         const daysAgo = lastDone
           ? Math.floor((Date.now() - lastDone.getTime()) / 86_400_000)
           : routine.frequency_days
 
+        const messages: Record<string, string> = {
+          cleaning: `Faz ${daysAgo} dia${daysAgo !== 1 ? 's' : ''} desde a ultima limpeza. Hora de dar uma geral!`,
+          grocery: `Sua lista de compras pode estar desatualizada ha ${daysAgo} dia${daysAgo !== 1 ? 's' : ''}.`,
+          home: `A tarefa "${routine.title}" esta atrasada ha ${daysAgo} dia${daysAgo !== 1 ? 's' : ''}.`,
+          pet: `Seu pet precisa de atencao — ${routine.title} esta em atraso.`,
+          maintenance: `Manutencao pendente: "${routine.title}" ha ${daysAgo} dia${daysAgo !== 1 ? 's' : ''}.`,
+        }
+
         suggestions.push({
           user_id: user.id,
-          message: `It's been ${daysAgo} day${daysAgo !== 1 ? 's' : ''} since you ${routine.title.toLowerCase()}`,
-          action: "Add to today's list?",
-          type: 'alert',
+          message: messages[routine.category] ?? `"${routine.title}" esta atrasado ha ${daysAgo} dia${daysAgo !== 1 ? 's' : ''}.`,
+          action: 'Adicionar a lista de hoje?',
+          type: 'task',
           date: today,
+          read: false,
           routine_id: routine.id,
         })
       }
 
       if (suggestions.length < 3 && dayOfWeek === 6) {
-        const hasCleaningRoutine = (overdue ?? []).some(
-          (r: OverdueRoutine) => r.category === 'cleaning',
-        )
-        if (!hasCleaningRoutine) {
+        const hasRoutineSuggestion = suggestions.some((s) => s.routine_id)
+        if (!hasRoutineSuggestion) {
           suggestions.push({
             user_id: user.id,
-            message: "Saturday is a great day for a deep clean",
-            action: "Add to today's list?",
+            message: 'Sabado e um otimo dia para uma faxina geral na casa.',
+            action: 'Ver guias de limpeza',
             type: 'tip',
             date: today,
+            read: false,
+            routine_id: null,
           })
         }
       }
@@ -93,16 +107,25 @@ Deno.serve(async () => {
       if (suggestions.length < 3 && dayOfWeek === 0) {
         suggestions.push({
           user_id: user.id,
-          message: "Organize your week: check what needs to be done at home",
-          action: "Plan the week",
+          message: 'Organize sua semana: veja o que precisa ser feito em casa.',
+          action: 'Planejar a semana',
           type: 'tip',
           date: today,
+          read: false,
+          routine_id: null,
         })
       }
 
       if (suggestions.length === 0) {
-        processed++
-        continue
+        suggestions.push({
+          user_id: user.id,
+          message: 'Sua casa esta em dia! Continue mantendo a rotina.',
+          action: null,
+          type: 'tip',
+          date: today,
+          read: false,
+          routine_id: null,
+        })
       }
 
       await supabase
@@ -113,7 +136,7 @@ Deno.serve(async () => {
 
       const { error: insertError } = await supabase
         .from('daily_suggestions')
-        .insert(suggestions.map((s) => ({ ...s, read: false })))
+        .insert(suggestions)
 
       if (insertError) {
         errors.push(`${user.id}: ${insertError.message}`)

@@ -1,24 +1,18 @@
-import { LogOut, Moon, Sun } from "lucide-react-native";
 import { router } from "expo-router";
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  View,
-} from "react-native";
+import { LogOut, Moon, Sun } from "lucide-react-native";
+import { Pressable, ScrollView, StatusBar, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProactiveCard } from "@/src/components/features/ProactiveCard";
 import { TaskItem } from "@/src/components/features/TaskItem";
 import { Text } from "@/src/components/ui/Text";
 import { colors } from "@/src/constants/theme";
-import { signOut } from "@/src/services/authService";
 import { addSuggestionAsTask } from "@/src/services/suggestionsService";
+import { useAuthStore } from "@/src/stores/authStore";
 import { useTasksStore } from "@/src/stores/tasksStore";
 import { useThemeStore } from "@/src/stores/themeStore";
-import { useCurrentLevelInfo, useUserStore } from "@/src/stores/userStore";
 import type { Suggestion } from "@/src/stores/userStore";
+import { useCurrentLevelInfo, useUserStore } from "@/src/stores/userStore";
 
 // Lê direto do store — não depende de Appearance.setColorScheme() propagar
 function useTheme() {
@@ -106,7 +100,7 @@ function HeaderAction({
 function XPCard() {
   const { label, emoji, levelProgress, currentLevelXP, levelTotalXP } =
     useCurrentLevelInfo();
-  const xpTotal = useUserStore((s) => s.xpTotal);
+  const xpTotal = useUserStore((s) => s.user?.total_xp) ?? 0;
 
   return (
     <View
@@ -346,7 +340,9 @@ function AchievementBadge({
   );
 }
 
-function suggestionCardType(type: Suggestion["type"]): "tip" | "alert" | "achievement" {
+function suggestionCardType(
+  type: Suggestion["type"],
+): "tip" | "alert" | "achievement" {
   if (type === "guide") return "achievement";
   return "tip";
 }
@@ -354,7 +350,11 @@ function suggestionCardType(type: Suggestion["type"]): "tip" | "alert" | "achiev
 export default function HomeScreen() {
   const theme = useTheme();
   const user = useUserStore((s) => s.user);
-  const name = user?.name ?? '';
+  const firstName = (
+    user?.name ||
+    (user as never as { nome?: string })?.nome ||
+    ""
+  ).split(" ")[0];
   const userId = user?.id ?? null;
   const suggestions = useUserStore((s) => s.suggestions);
   const { todayTasks, completeTask, loadTodayTasks } = useTasksStore();
@@ -375,19 +375,9 @@ export default function HomeScreen() {
     if (!error) await loadTodayTasks(userId);
   }
 
-  function handleLogout() {
-    Alert.alert("Sair da conta", "Tem certeza que deseja sair?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Sair",
-        style: "destructive",
-        onPress: () => {
-          signOut().then(({ error }) => {
-            if (error) console.error("[logout]", error.message);
-          });
-        },
-      },
-    ]);
+  async function handleLogout() {
+    await useAuthStore.getState().signOut();
+    router.replace("/(auth)/login");
   }
 
   const pendingTasks = todayTasks.filter((t) => !t.completed);
@@ -428,16 +418,18 @@ export default function HomeScreen() {
                   marginBottom: 16,
                 }}
               >
-                {name || "Bem-vindo!"}
+                {`Bem-vindo(a), ${firstName}!`}
               </Text>
             </View>
 
             {/* Botões de ação */}
             <View style={{ flexDirection: "row", gap: 8, paddingTop: 4 }}>
               <HeaderAction onPress={toggle}>
-                {scheme === "dark"
-                  ? <Sun size={18} color="#ffffff" />
-                  : <Moon size={18} color="#ffffff" />}
+                {scheme === "dark" ? (
+                  <Sun size={18} color="#ffffff" />
+                ) : (
+                  <Moon size={18} color="#ffffff" />
+                )}
               </HeaderAction>
               <HeaderAction onPress={handleLogout}>
                 <LogOut size={18} color="#ffffff" />
@@ -463,7 +455,7 @@ export default function HomeScreen() {
         ) : (
           <ProactiveCard
             type="tip"
-            message={`Bem-vindo, ${name || "ao Sem Manual"}! Explore os guias e comece sua primeira tarefa. 🏠`}
+            message={`Bem-vindo, ${firstName || "ao Sem Manual"}! Explore os guias e comece sua primeira tarefa. 🏠`}
             onAction={undefined}
           />
         )}

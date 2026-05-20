@@ -1,23 +1,26 @@
 import "../global.css";
 
+import { type Session } from "@supabase/supabase-js";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import Constants from "expo-constants";
 import { useFonts } from "expo-font";
 import * as Notifications from "expo-notifications";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { View } from "react-native";
 import "react-native-reanimated";
 
+import { supabase } from "@/src/services/supabase";
 import {
   requestPermission,
   savePushToken,
   scheduleDailyReminder,
 } from "@/src/services/notificationsService";
-import { useAuthStore } from "@/src/stores/authStore";
 import { useThemeStore } from "@/src/stores/themeStore";
 import { useUserStore } from "@/src/stores/userStore";
 
@@ -42,14 +45,10 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
+    if (loaded) SplashScreen.hideAsync();
   }, [loaded]);
 
-  if (!loaded) {
-    return null;
-  }
+  if (!loaded) return null;
 
   return <RootLayoutNav />;
 }
@@ -58,36 +57,66 @@ function RootLayoutNav() {
   const { scheme } = useThemeStore();
   const router = useRouter();
   const segments = useSegments();
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const { session, loading: authLoading, initialize } = useAuthStore();
-  const userName = useUserStore((s) => s.user?.name);
-
-  const notificacaoListener = useRef<Notifications.EventSubscription | null>(
-    null,
-  );
+  const notificacaoListener = useRef<Notifications.EventSubscription | null>(null);
   const respostaListener = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
-    return initialize();
+    let mounted = true;
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      console.log("[Auth] event:", event);
+      setSession(session);
+      if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
+        if (session) {
+          const meta = session.user.user_metadata ?? {};
+          const fallbackName: string =
+            (meta.full_name as string | undefined) ??
+            (meta.name as string | undefined) ??
+            session.user.email?.split("@")[0] ??
+            "";
+          await useUserStore.getState().loadData(session.user.id, fallbackName);
+        }
+        setLoading(false);
+      }
+      if (event === "SIGNED_OUT") {
+        useUserStore.setState({ user: null, achievements: [], suggestions: [] });
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
-    if (authLoading) return;
-
+    if (loading) return;
     const inAuthGroup = segments[0] === "(auth)";
     const inOnboarding = segments[0] === "onboarding";
 
-    if (!session) {
-      if (!inAuthGroup) router.replace("/(auth)/login");
-    } else if (!userName) {
-      if (!inOnboarding) router.replace("/onboarding");
-    } else {
-      if (inAuthGroup || inOnboarding) router.replace("/(tabs)");
+    if (!session && !inAuthGroup) {
+      router.replace("/(auth)/login");
+    } else if (session && inAuthGroup) {
+      const user = useUserStore.getState().user;
+      const needsOnboarding = !user?.home_type;
+      router.replace(needsOnboarding ? "/onboarding" : "/(tabs)");
+    } else if (session && !inAuthGroup && !inOnboarding) {
+      const user = useUserStore.getState().user;
+      if (!user?.home_type) {
+        router.replace("/onboarding");
+      }
     }
-  }, [session, authLoading, userName]);
+  }, [session, loading]);
 
   useEffect(() => {
-    if (session) {
+    if (session && Constants.appOwnership !== "expo") {
       requestPermission().then((granted) => {
         if (granted) {
           scheduleDailyReminder();
@@ -100,14 +129,14 @@ function RootLayoutNav() {
   useEffect(() => {
     notificacaoListener.current = Notifications.addNotificationReceivedListener(
       (notificacao) => {
-        console.log("[Notificação recebida]", notificacao.request.content.title);
+        console.log("[Notificacao recebida]", notificacao.request.content.title);
       },
     );
 
     respostaListener.current =
       Notifications.addNotificationResponseReceivedListener((resposta) => {
         const data = resposta.notification.request.content.data;
-        console.log("[Notificação tocada]", data);
+        console.log("[Notificacao tocada]", data);
       });
 
     return () => {
@@ -116,20 +145,16 @@ function RootLayoutNav() {
     };
   }, []);
 
+  if (loading) {
+    return <View style={{ flex: 1, backgroundColor: "#F6F7F9" }} />;
+  }
+
   return (
     <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="onboarding" />
-        <Stack.Screen name="guides/[id]" />
-        <Stack.Screen name="diagnostic" />
-        <Stack.Screen name="emergency" />
-        <Stack.Screen name="emergency/[situation]" />
-        <Stack.Screen
-          name="modal"
-          options={{ headerShown: true, presentation: "modal" }}
-        />
       </Stack>
     </ThemeProvider>
   );

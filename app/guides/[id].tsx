@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "@/src/components/ui/Text";
 import { colors } from "@/src/constants/theme";
 import { CATEGORY_LABELS, GUIDES, type GuideCategory } from "@/src/constants/guias";
+import * as guidesService from "@/src/services/guidesService";
 import { useThemeStore } from "@/src/stores/themeStore";
 import { useUserStore } from "@/src/stores/userStore";
 
@@ -113,7 +114,8 @@ function StepChip({
 export default function GuideDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
-  const { addXP, unlockAchievement, achievements } = useUserStore();
+  const userId = useUserStore((s) => s.user?.id ?? null);
+  const achievements = useUserStore((s) => s.achievements);
 
   const scrollRef = useRef<ScrollView>(null);
   const stepYPositions = useRef<number[]>([]);
@@ -121,8 +123,7 @@ export default function GuideDetailScreen() {
   const [justLearned, setJustLearned] = useState(false);
 
   const guide = GUIDES.find((g) => g.id === id);
-  const achievementId = `guide:${id}`;
-  const isLearned = achievements.includes(achievementId);
+  const isLearned = achievements.some((a) => a.achievement_id === `guide:${guide?.id}`);
 
   function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     const scrollY = e.nativeEvent.contentOffset.y;
@@ -142,12 +143,10 @@ export default function GuideDetailScreen() {
     }
   }
 
-  function handleMarkAsLearned() {
-    if (!isLearned && !justLearned) {
-      addXP(GUIDE_XP);
-      unlockAchievement(achievementId);
-      setJustLearned(true);
-    }
+  async function handleMarkAsLearned() {
+    if (isLearned || justLearned || !userId || !guide) return;
+    setJustLearned(true);
+    await guidesService.markAsRead(userId, guide.id);
   }
 
   if (!guide) {

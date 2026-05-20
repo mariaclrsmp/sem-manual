@@ -103,9 +103,14 @@ export async function cancelNotification(notificationId: string): Promise<void> 
   await Notifications.cancelScheduledNotificationAsync(notificationId);
 }
 
+function isExpoGo(): boolean {
+  return Constants.appOwnership === 'expo';
+}
+
 export async function savePushToken(userId: string): Promise<void> {
   try {
     if (!Constants.isDevice) return;
+    if (isExpoGo()) return;
 
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ??

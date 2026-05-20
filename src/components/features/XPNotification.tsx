@@ -8,6 +8,7 @@ interface XPNotificationProps {
   type: 'xp' | 'achievement'
   xpAmount?: number
   achievementTitle?: string
+  onDismiss?: () => void
 }
 
 const SLIDE_DISTANCE = 80
@@ -19,6 +20,7 @@ export function XPNotification({
   type,
   xpAmount,
   achievementTitle,
+  onDismiss,
 }: XPNotificationProps) {
   const translateY = useRef(new Animated.Value(SLIDE_DISTANCE)).current
   const opacity = useRef(new Animated.Value(0)).current
@@ -54,6 +56,7 @@ export function XPNotification({
         }),
       ]).start(() => {
         translateY.setValue(SLIDE_DISTANCE)
+        onDismiss?.()
       })
     }, VISIBLE_DURATION)
 

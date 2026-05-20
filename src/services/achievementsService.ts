@@ -54,7 +54,6 @@ export async function unlock(
     },
   })
 
-  const userId = useUserStore.getState().user?.id ?? ''
   useUserStore.setState((state) => ({
     achievements: [
       ...state.achievements,

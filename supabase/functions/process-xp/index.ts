@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
 
   const { data: currentUser, error: fetchError } = await adminClient
     .from('users')
-    .select('xp_total, level')
+    .select('total_xp, level')
     .eq('id', userId)
     .single()
 
@@ -106,13 +106,13 @@ Deno.serve(async (req) => {
   }
 
   const previousLevel = currentUser.level as UserLevel
-  const totalXP = (currentUser.xp_total as number) + amount
+  const totalXP = (currentUser.total_xp as number) + amount
   const level = resolveLevel(totalXP)
   const leveledUp = level !== previousLevel
 
   const { error: updateError } = await adminClient
     .from('users')
-    .update({ xp_total: totalXP, level })
+    .update({ total_xp: totalXP, level })
     .eq('id', userId)
 
   if (updateError) {
