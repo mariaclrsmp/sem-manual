@@ -115,7 +115,6 @@ export const useUserStore = create<UserState>()((set, get) => ({
 
     if (!profile) {
       const resolvedProfile = await userService.ensureProfile(userId);
-      console.log('[userStore] user data received (ensured):', JSON.stringify(resolvedProfile));
       set({
         user: resolvedProfile,
         achievements: remoteAchievements as Achievement[],
@@ -125,7 +124,6 @@ export const useUserStore = create<UserState>()((set, get) => ({
       return;
     }
 
-    console.log('[userStore] user data received:', JSON.stringify(profile));
     set({
       user: profile,
       achievements: remoteAchievements as Achievement[],

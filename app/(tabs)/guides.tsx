@@ -1,13 +1,16 @@
 import { router } from "expo-router";
-import { useState } from "react";
 import {
-  Dimensions,
-  FlatList,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  View,
-} from "react-native";
+  BookOpen,
+  ChefHat,
+  Clock,
+  DollarSign,
+  Flame,
+  ShieldAlert,
+  Sparkles,
+  Wrench,
+} from "lucide-react-native";
+import { useState } from "react";
+import { Dimensions, FlatList, Pressable, ScrollView, StatusBar, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Text } from "@/src/components/ui/Text";
@@ -36,13 +39,15 @@ const CATEGORY_COLORS: Record<
   manutencao: { bg: "#F3F4F6", text: "#4B5563", darkBg: "#1F2937", darkText: "#9CA3AF" },
 };
 
-const CHIP_ORDER: GuideCategory[] = [
-  "cozinha",
-  "limpeza",
-  "manutencao",
-  "emergencia",
-  "economia",
-];
+const CATEGORY_ICONS: Record<GuideCategory, React.ComponentType<{ size: number; color: string }>> = {
+  cozinha:    ChefHat,
+  limpeza:    Sparkles,
+  emergencia: ShieldAlert,
+  economia:   DollarSign,
+  manutencao: Wrench,
+};
+
+const CHIP_ORDER: GuideCategory[] = ["cozinha", "limpeza", "manutencao", "emergencia", "economia"];
 
 function useTheme() {
   const scheme = useThemeStore((s) => s.scheme);
@@ -75,16 +80,15 @@ function CategoryChip({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => ({
+      style={{
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 999,
         borderWidth: 1,
         borderColor: active ? colors.verde : theme.chipBorder,
         backgroundColor: active ? colors.verde : theme.chipInactiveBg,
-        opacity: pressed ? 0.75 : 1,
         marginRight: 8,
-      })}
+      }}
     >
       <Text
         style={{
@@ -125,18 +129,20 @@ function CategoryBadge({ category, dark }: { category: GuideCategory; dark: bool
 }
 
 function GuideCard({ guide, theme }: { guide: Guide; theme: Theme }) {
+  const Icon = CATEGORY_ICONS[guide.category];
+  const catColors = CATEGORY_COLORS[guide.category];
+  const iconColor = theme.dark ? catColors.darkText : catColors.text;
+  const iconBg = theme.dark ? catColors.darkBg : catColors.bg;
+
   return (
     <Pressable
-      onPress={() =>
-        router.push({ pathname: "/guides/[id]", params: { id: guide.id } })
-      }
-      style={({ pressed }) => ({
+      onPress={() => router.push({ pathname: "/guides/[id]", params: { id: guide.id } })}
+      style={{
         width: CARD_WIDTH,
         backgroundColor: theme.surface,
         borderRadius: 16,
         padding: 14,
         gap: 8,
-        opacity: pressed ? 0.75 : 1,
         borderWidth: 1,
         borderColor: theme.border,
         shadowColor: "#000",
@@ -144,31 +150,34 @@ function GuideCard({ guide, theme }: { guide: Guide; theme: Theme }) {
         shadowRadius: 6,
         shadowOffset: { width: 0, height: 2 },
         elevation: 2,
-      })}
+      }}
     >
-      <Text style={{ fontSize: 36, lineHeight: 44 }}>{guide.emoji}</Text>
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          backgroundColor: iconBg,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Icon size={24} color={iconColor} />
+      </View>
 
       <Text
-        style={{
-          fontFamily: "Nunito_700Bold",
-          fontSize: 13,
-          color: theme.text,
-          lineHeight: 18,
-        }}
+        style={{ fontFamily: "Nunito_700Bold", fontSize: 13, color: theme.text, lineHeight: 18 }}
         numberOfLines={2}
       >
         {guide.title}
       </Text>
 
-      <Text
-        style={{
-          fontFamily: "Nunito_400Regular",
-          fontSize: 11,
-          color: theme.textMuted,
-        }}
-      >
-        ⏱ {guide.readingTime} min
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+        <Clock size={11} color={theme.textMuted} />
+        <Text style={{ fontFamily: "Nunito_400Regular", fontSize: 11, color: theme.textMuted }}>
+          {guide.readingTime} min
+        </Text>
+      </View>
 
       <CategoryBadge category={guide.category} dark={theme.dark} />
     </Pressable>
@@ -193,30 +202,14 @@ function Header({
           barStyle={theme.dark ? "light-content" : "dark-content"}
           backgroundColor={theme.bg}
         />
-        <View
-          style={{
-            paddingHorizontal: H_PAD,
-            paddingTop: 16,
-            paddingBottom: 12,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: "Nunito_800ExtraBold",
-              fontSize: 26,
-              color: theme.text,
-            }}
-          >
-            Guias domésticos
-          </Text>
-          <Text
-            style={{
-              fontFamily: "Nunito_400Regular",
-              fontSize: 13,
-              color: theme.textMuted,
-              marginTop: 2,
-            }}
-          >
+        <View style={{ paddingHorizontal: H_PAD, paddingTop: 16, paddingBottom: 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 }}>
+            <BookOpen size={22} color={colors.verde} />
+            <Text style={{ fontFamily: "Nunito_800ExtraBold", fontSize: 26, color: theme.text }}>
+              Guias domesticos
+            </Text>
+          </View>
+          <Text style={{ fontFamily: "Nunito_400Regular", fontSize: 13, color: theme.textMuted }}>
             {total} {total === 1 ? "guia encontrado" : "guias encontrados"}
           </Text>
         </View>
@@ -225,17 +218,9 @@ function Header({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: H_PAD,
-          paddingBottom: 4,
-        }}
+        contentContainerStyle={{ paddingHorizontal: H_PAD, paddingBottom: 4 }}
       >
-        <CategoryChip
-          label="Todos"
-          active={selected === null}
-          onPress={() => onSelect(null)}
-          theme={theme}
-        />
+        <CategoryChip label="Todos" active={selected === null} onPress={() => onSelect(null)} theme={theme} />
         {CHIP_ORDER.map((cat) => (
           <CategoryChip
             key={cat}
@@ -254,9 +239,7 @@ export default function GuidesScreen() {
   const theme = useTheme();
   const [selected, setSelected] = useState<GuideCategory | null>(null);
 
-  const filtered = selected
-    ? GUIDES.filter((g) => g.category === selected)
-    : GUIDES;
+  const filtered = selected ? GUIDES.filter((g) => g.category === selected) : GUIDES;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
@@ -264,18 +247,10 @@ export default function GuidesScreen() {
         data={filtered}
         keyExtractor={(item) => item.id}
         numColumns={2}
-        contentContainerStyle={{
-          paddingHorizontal: H_PAD,
-          paddingBottom: 32,
-        }}
+        contentContainerStyle={{ paddingHorizontal: H_PAD, paddingBottom: 32 }}
         columnWrapperStyle={{ gap: COL_GAP, marginBottom: COL_GAP }}
         ListHeaderComponent={
-          <Header
-            selected={selected}
-            onSelect={setSelected}
-            theme={theme}
-            total={filtered.length}
-          />
+          <Header selected={selected} onSelect={setSelected} theme={theme} total={filtered.length} />
         }
         renderItem={({ item }) => <GuideCard guide={item} theme={theme} />}
         showsVerticalScrollIndicator={false}

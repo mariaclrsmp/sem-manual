@@ -1,9 +1,11 @@
+import { Bell, Lightbulb, Star } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
 import { Text } from '@/src/components/ui/Text';
 import { colors } from '@/src/constants/theme';
 
 type CardType = 'alert' | 'tip' | 'achievement';
+type IconComponent = React.ComponentType<{ size: number; color: string }>;
 
 interface ProactiveCardProps {
   message: string;
@@ -12,14 +14,14 @@ interface ProactiveCardProps {
   type: CardType;
 }
 
-const CONFIG: Record<CardType, { icon: string; background: string; border: string }> = {
-  alert:       { icon: '⏰', background: '#EAF0F9', border: '#C5D8F0' },
-  tip:         { icon: '💡', background: '#EAF0F9', border: '#C5D8F0' },
-  achievement: { icon: '⭐', background: '#E8F7F0', border: '#B6E8D2' },
+const CONFIG: Record<CardType, { Icon: IconComponent; background: string; border: string; iconColor: string }> = {
+  alert:       { Icon: Bell,      background: '#EAF0F9', border: '#C5D8F0', iconColor: colors.azul },
+  tip:         { Icon: Lightbulb, background: '#EAF0F9', border: '#C5D8F0', iconColor: colors.azul },
+  achievement: { Icon: Star,      background: '#E8F7F0', border: '#B6E8D2', iconColor: colors.verde },
 };
 
 export function ProactiveCard({ message, action, onAction, type }: ProactiveCardProps) {
-  const { icon, background, border } = CONFIG[type];
+  const { Icon, background, border, iconColor } = CONFIG[type];
 
   return (
     <View
@@ -34,7 +36,18 @@ export function ProactiveCard({ message, action, onAction, type }: ProactiveCard
         gap: 12,
       }}
     >
-      <Text style={{ fontSize: 22, lineHeight: 28 }}>{icon}</Text>
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: 'rgba(255,255,255,0.6)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon size={20} color={iconColor} />
+      </View>
 
       <View style={{ flex: 1, gap: 4 }}>
         <Text

@@ -44,6 +44,7 @@ export async function unlock(
     useUserStore.getState().applyXPGain(definition.xpReward)
   }
 
+  const prevSeq = useUserStore.getState().notification?.seq ?? 0
   useUserStore.setState({
     notification: {
       visible: true,
@@ -51,6 +52,7 @@ export async function unlock(
       achievementTitle: definition
         ? `${definition.emoji} ${definition.title}`
         : achievementId,
+      seq: prevSeq + 1,
     },
   })
 

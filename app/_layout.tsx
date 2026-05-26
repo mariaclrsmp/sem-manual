@@ -66,13 +66,23 @@ function RootLayoutNav() {
   useEffect(() => {
     let mounted = true;
 
+    supabase.auth.signOut().then(() => {
+      if (!mounted) return;
+      setSession(null);
+      setLoading(false);
+    });
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      console.log("[Auth] event:", event);
-      setSession(session);
-      if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
+
+      if (event === "SIGNED_IN") {
+        // Manter loading=true enquanto busca dados do usuário.
+        // setLoading(true) + setSession() são batched pelo React 18,
+        // então o efeito de routing só dispara depois do loadData.
+        setLoading(true);
+        setSession(session);
         if (session) {
           const meta = session.user.user_metadata ?? {};
           const fallbackName: string =
@@ -83,10 +93,12 @@ function RootLayoutNav() {
           await useUserStore.getState().loadData(session.user.id, fallbackName);
         }
         setLoading(false);
+        return;
       }
+
       if (event === "SIGNED_OUT") {
+        setSession(null);
         useUserStore.setState({ user: null, achievements: [], suggestions: [] });
-        setLoading(false);
       }
     });
 
@@ -128,16 +140,11 @@ function RootLayoutNav() {
 
   useEffect(() => {
     notificacaoListener.current = Notifications.addNotificationReceivedListener(
-      (notificacao) => {
-        console.log("[Notificacao recebida]", notificacao.request.content.title);
-      },
+      () => {},
     );
 
     respostaListener.current =
-      Notifications.addNotificationResponseReceivedListener((resposta) => {
-        const data = resposta.notification.request.content.data;
-        console.log("[Notificacao tocada]", data);
-      });
+      Notifications.addNotificationResponseReceivedListener(() => {});
 
     return () => {
       notificacaoListener.current?.remove();

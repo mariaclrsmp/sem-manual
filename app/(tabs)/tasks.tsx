@@ -1,6 +1,7 @@
-import { Plus } from "lucide-react-native";
+import { CheckCircle, Flame, Plus } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -19,8 +20,6 @@ import { useTasksStore } from "@/src/stores/tasksStore";
 import { useThemeStore } from "@/src/stores/themeStore";
 import { useUserStore } from "@/src/stores/userStore";
 
-// ─── theme ────────────────────────────────────────────────────────────────────
-
 function useTheme() {
   const scheme = useThemeStore((s) => s.scheme);
   const dark = scheme === "dark";
@@ -36,8 +35,6 @@ function useTheme() {
 
 type Theme = ReturnType<typeof useTheme>;
 
-// ─── constants ────────────────────────────────────────────────────────────────
-
 type FilterKey = "all" | TaskCategory;
 
 const FILTERS: { key: FilterKey; label: string }[] = [
@@ -49,10 +46,10 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 ];
 
 const QUICK_SUGGESTIONS: { title: string; category: TaskCategory; xp: number }[] = [
-  { title: "Lavar a louça", category: "cleaning", xp: 15 },
+  { title: "Lavar a louca", category: "cleaning", xp: 15 },
   { title: "Fazer a cama", category: "home", xp: 5 },
   { title: "Tirar o lixo", category: "home", xp: 10 },
-  { title: "Passar pano no chão", category: "cleaning", xp: 20 },
+  { title: "Passar pano no chao", category: "cleaning", xp: 20 },
   { title: "Verificar geladeira", category: "grocery", xp: 10 },
 ];
 
@@ -61,16 +58,14 @@ const CATEGORY_OPTIONS: { key: TaskCategory; label: string }[] = [
   { key: "grocery", label: "Mercado" },
   { key: "home", label: "Casa" },
   { key: "pet", label: "Pet" },
-  { key: "maintenance", label: "Manutenção" },
+  { key: "maintenance", label: "Manutencao" },
 ];
-
-// ─── helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(): string {
   const now = new Date();
-  const weekdays = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+  const weekdays = ["Domingo", "Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado"];
   const months = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho",
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
   ];
   return `${weekdays[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
@@ -79,8 +74,6 @@ function formatDate(): string {
 function todayStr(): string {
   return new Date().toISOString().split("T")[0];
 }
-
-// ─── add task modal ────────────────────────────────────────────────────────────
 
 function AddTaskModal({
   visible,
@@ -149,12 +142,7 @@ function AddTaskModal({
                     },
                   ]}
                 >
-                  <Text
-                    style={[
-                      s.filterChipText,
-                      { color: active ? "#fff" : theme.textMuted },
-                    ]}
-                  >
+                  <Text style={[s.filterChipText, { color: active ? "#fff" : theme.textMuted }]}>
                     {opt.label}
                   </Text>
                 </Pressable>
@@ -174,11 +162,9 @@ function AddTaskModal({
   );
 }
 
-// ─── screen ───────────────────────────────────────────────────────────────────
-
 export default function TasksScreen() {
   const theme = useTheme();
-  const { todayTasks, loadTodayTasks, completeTask, addTask } = useTasksStore();
+  const { todayTasks, loadTodayTasks, completeTask, addTask, loading } = useTasksStore();
   const user = useUserStore((s) => s.user);
   const userId = user?.id ?? null;
 
@@ -190,25 +176,17 @@ export default function TasksScreen() {
   }, [userId]);
 
   const pending = useMemo(
-    () =>
-      todayTasks.filter(
-        (t) => !t.completed && (activeFilter === "all" || t.category === activeFilter),
-      ),
+    () => todayTasks.filter((t) => !t.completed && (activeFilter === "all" || t.category === activeFilter)),
     [todayTasks, activeFilter],
   );
 
   const completed = useMemo(
-    () =>
-      todayTasks.filter(
-        (t) => t.completed && (activeFilter === "all" || t.category === activeFilter),
-      ),
+    () => todayTasks.filter((t) => t.completed && (activeFilter === "all" || t.category === activeFilter)),
     [todayTasks, activeFilter],
   );
 
   const totalCompleted = todayTasks.filter((t) => t.completed).length;
-  const xpToday = todayTasks
-    .filter((t) => t.completed)
-    .reduce((sum, t) => sum + t.xp, 0);
+  const xpToday = todayTasks.filter((t) => t.completed).reduce((sum, t) => sum + t.xp, 0);
 
   const quickSuggestions = QUICK_SUGGESTIONS.filter(
     (sg) => !todayTasks.some((t) => t.title === sg.title),
@@ -216,58 +194,39 @@ export default function TasksScreen() {
 
   async function handleAddSuggestion(sg: (typeof QUICK_SUGGESTIONS)[0]) {
     if (!userId) return;
-    await addTask({
-      user_id: userId,
-      title: sg.title,
-      category: sg.category,
-      xp: sg.xp,
-      completed: false,
-      date: todayStr(),
-    });
+    await addTask({ user_id: userId, title: sg.title, category: sg.category, xp: sg.xp, completed: false, date: todayStr() });
   }
 
   async function handleAddTask(title: string, category: TaskCategory) {
     if (!userId) return;
-    await addTask({
-      user_id: userId,
-      title,
-      category,
-      xp: 10,
-      completed: false,
-      date: todayStr(),
-    });
+    await addTask({ user_id: userId, title, category, xp: 10, completed: false, date: todayStr() });
   }
 
   return (
     <View style={[s.root, { backgroundColor: theme.bg }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.verde} />
 
-      {/* ── HEADER ── */}
       <SafeAreaView edges={["top"]} style={s.header}>
         <View style={s.headerTop}>
           <View style={{ flex: 1 }}>
             <Text style={s.headerTitle}>Minhas Tarefas</Text>
             <Text style={s.headerDate}>{formatDate()}</Text>
           </View>
-          <Pressable
-            style={({ pressed }) => [s.addBtn, { opacity: pressed ? 0.7 : 1 }]}
-            onPress={() => setShowModal(true)}
-          >
+          <Pressable style={s.addBtn} onPress={() => setShowModal(true)}>
             <Plus size={20} color="#fff" />
           </Pressable>
         </View>
 
         <View style={s.statsRow}>
           <View style={s.statChip}>
-            <Text style={s.statChipText}>
-              {totalCompleted}/{todayTasks.length} Concluídas
-            </Text>
+            <Text style={s.statChipText}>{totalCompleted}/{todayTasks.length} Concluidas</Text>
           </View>
           <View style={s.statChip}>
             <Text style={s.statChipText}>+{xpToday} XP hoje</Text>
           </View>
-          <View style={s.statChip}>
-            <Text style={s.statChipText}>🔥 0 dias</Text>
+          <View style={[s.statChip, { flexDirection: "row", gap: 4 }]}>
+            <Flame size={11} color="#fff" />
+            <Text style={s.statChipText}>0 dias</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -277,7 +236,6 @@ export default function TasksScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── FILTROS ── */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -297,12 +255,7 @@ export default function TasksScreen() {
                   },
                 ]}
               >
-                <Text
-                  style={[
-                    s.filterChipText,
-                    { color: active ? "#fff" : theme.textMuted },
-                  ]}
-                >
+                <Text style={[s.filterChipText, { color: active ? "#fff" : theme.textMuted }]}>
                   {f.label}
                 </Text>
               </Pressable>
@@ -310,23 +263,12 @@ export default function TasksScreen() {
           })}
         </ScrollView>
 
-        {/* ── SUGESTÕES RÁPIDAS ── */}
         {quickSuggestions.length > 0 && (
           <View style={s.section}>
-            <Text style={[s.sectionTitle, { color: theme.text }]}>
-              Sugestões rápidas
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8 }}
-            >
+            <Text style={[s.sectionTitle, { color: theme.text }]}>Sugestoes rapidas</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {quickSuggestions.map((sg) => (
-                <Pressable
-                  key={sg.title}
-                  onPress={() => handleAddSuggestion(sg)}
-                  style={({ pressed }) => [s.suggestionChip, { opacity: pressed ? 0.7 : 1 }]}
-                >
+                <Pressable key={sg.title} onPress={() => handleAddSuggestion(sg)} style={s.suggestionChip}>
                   <Text style={s.suggestionText}>+ {sg.title}</Text>
                 </Pressable>
               ))}
@@ -334,45 +276,40 @@ export default function TasksScreen() {
           </View>
         )}
 
-        {/* ── PENDENTES ── */}
-        {pending.length > 0 && (
-          <View style={s.section}>
-            <Text style={[s.sectionTitle, { color: theme.text }]}>
-              Pendentes ({pending.length})
-            </Text>
-            <View style={{ gap: 10 }}>
-              {pending.map((t) => (
-                <TaskItem key={t.id} task={t} onComplete={completeTask} />
-              ))}
-            </View>
-          </View>
-        )}
+        {loading ? (
+          <ActivityIndicator size="large" color={colors.verde} style={{ marginTop: 60 }} />
+        ) : (
+          <>
+            {pending.length > 0 && (
+              <View style={s.section}>
+                <Text style={[s.sectionTitle, { color: theme.text }]}>Pendentes ({pending.length})</Text>
+                <View style={{ gap: 10 }}>
+                  {pending.map((t) => <TaskItem key={t.id} task={t} onComplete={completeTask} />)}
+                </View>
+              </View>
+            )}
 
-        {/* ── CONCLUÍDAS ── */}
-        {completed.length > 0 && (
-          <View style={s.section}>
-            <Text style={[s.sectionTitle, { color: theme.text }]}>
-              Concluídas ({completed.length})
-            </Text>
-            <View style={{ gap: 10 }}>
-              {completed.map((t) => (
-                <TaskItem key={t.id} task={t} onComplete={completeTask} />
-              ))}
-            </View>
-          </View>
-        )}
+            {completed.length > 0 && (
+              <View style={s.section}>
+                <Text style={[s.sectionTitle, { color: theme.text }]}>Concluidas ({completed.length})</Text>
+                <View style={{ gap: 10 }}>
+                  {completed.map((t) => <TaskItem key={t.id} task={t} onComplete={completeTask} />)}
+                </View>
+              </View>
+            )}
 
-        {/* ── EMPTY STATE ── */}
-        {pending.length === 0 && completed.length === 0 && (
-          <View style={s.emptyState}>
-            <Text style={s.emptyEmoji}>🎉</Text>
-            <Text style={[s.emptyTitle, { color: theme.text }]}>
-              Nenhuma tarefa por aqui
-            </Text>
-            <Text style={[s.emptySubtitle, { color: theme.textMuted }]}>
-              Toque em + para adicionar uma nova tarefa
-            </Text>
-          </View>
+            {pending.length === 0 && completed.length === 0 && (
+              <View style={s.emptyState}>
+                <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#E8F7F0", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+                  <CheckCircle size={40} color={colors.verde} />
+                </View>
+                <Text style={[s.emptyTitle, { color: theme.text }]}>Nenhuma tarefa por aqui</Text>
+                <Text style={[s.emptySubtitle, { color: theme.textMuted }]}>
+                  Toque em + para adicionar uma nova tarefa
+                </Text>
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
 
@@ -386,14 +323,8 @@ export default function TasksScreen() {
   );
 }
 
-// ─── styles ────────────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-
-  // Header — fundo verde fixo, padrão igual à Home
+  root: { flex: 1 },
   header: {
     backgroundColor: colors.verde,
     paddingHorizontal: 20,
@@ -406,17 +337,8 @@ const s = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 16,
   },
-  headerTitle: {
-    fontFamily: fonts.extrabold,
-    fontSize: 20,
-    color: "#fff",
-  },
-  headerDate: {
-    fontFamily: fonts.regular,
-    fontSize: 13,
-    color: "rgba(255,255,255,0.75)",
-    marginTop: 2,
-  },
+  headerTitle: { fontFamily: fonts.extrabold, fontSize: 20, color: "#fff" },
+  headerDate: { fontFamily: fonts.regular, fontSize: 13, color: "rgba(255,255,255,0.75)", marginTop: 2 },
   addBtn: {
     width: 36,
     height: 36,
@@ -425,10 +347,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  statsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
+  statsRow: { flexDirection: "row", gap: 8 },
   statChip: {
     flex: 1,
     backgroundColor: "rgba(255,255,255,0.2)",
@@ -436,47 +355,15 @@ const s = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 6,
     alignItems: "center",
+    justifyContent: "center",
   },
-  statChipText: {
-    fontFamily: fonts.semibold,
-    fontSize: 11,
-    color: "#fff",
-  },
-
-  // Scroll
-  scrollContent: {
-    paddingBottom: 40,
-  },
-
-  // Filters
-  filtersRow: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  filterChipText: {
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-  },
-
-  // Sections
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-    gap: 12,
-  },
-  sectionTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 15,
-  },
-
-  // Quick suggestions
+  statChipText: { fontFamily: fonts.semibold, fontSize: 11, color: "#fff" },
+  scrollContent: { paddingBottom: 40 },
+  filtersRow: { paddingHorizontal: 20, paddingVertical: 16, gap: 8 },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
+  filterChipText: { fontFamily: fonts.semibold, fontSize: 13 },
+  section: { paddingHorizontal: 20, marginBottom: 24, gap: 12 },
+  sectionTitle: { fontFamily: fonts.bold, fontSize: 15 },
   suggestionChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -486,58 +373,14 @@ const s = StyleSheet.create({
     borderStyle: "dashed",
     backgroundColor: colors.primaryLight,
   },
-  suggestionText: {
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    color: colors.verde,
-  },
-
-  // Empty state
-  emptyState: {
-    alignItems: "center",
-    paddingTop: 60,
-    paddingHorizontal: 40,
-    gap: 8,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 8,
-  },
-  emptyTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 17,
-    textAlign: "center",
-  },
-  emptySubtitle: {
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    textAlign: "center",
-  },
-
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "flex-end",
-  },
-  modalSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontFamily: fonts.extrabold,
-    fontSize: 18,
-    marginBottom: 16,
-  },
+  suggestionText: { fontFamily: fonts.semibold, fontSize: 13, color: colors.verde },
+  emptyState: { alignItems: "center", paddingTop: 60, paddingHorizontal: 40, gap: 8 },
+  emptyTitle: { fontFamily: fonts.bold, fontSize: 17, textAlign: "center" },
+  emptySubtitle: { fontFamily: fonts.regular, fontSize: 14, textAlign: "center" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+  modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 20 },
+  modalTitle: { fontFamily: fonts.extrabold, fontSize: 18, marginBottom: 16 },
   modalInput: {
     borderWidth: 1,
     borderRadius: 12,
@@ -547,27 +390,9 @@ const s = StyleSheet.create({
     fontSize: 15,
     marginBottom: 20,
   },
-  modalLabel: {
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    marginBottom: 10,
-  },
-  modalCategoryRow: {
-    gap: 8,
-    marginBottom: 24,
-  },
-  addButton: {
-    backgroundColor: colors.verde,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  addButtonDisabled: {
-    opacity: 0.4,
-  },
-  addButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: 15,
-    color: "#fff",
-  },
+  modalLabel: { fontFamily: fonts.semibold, fontSize: 13, marginBottom: 10 },
+  modalCategoryRow: { gap: 8, marginBottom: 24 },
+  addButton: { backgroundColor: colors.verde, borderRadius: 14, paddingVertical: 14, alignItems: "center" },
+  addButtonDisabled: { opacity: 0.4 },
+  addButtonText: { fontFamily: fonts.bold, fontSize: 15, color: "#fff" },
 });

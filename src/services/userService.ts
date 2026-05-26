@@ -55,9 +55,7 @@ export async function fetchProfile(
     .select('id, name, total_xp, level, profile, created_at')
     .eq('id', userId)
     .single()
-  console.log('[userService] profile data:', JSON.stringify(data))
-  console.log('[userService] profile error:', error)
-  if (!data) return { data: null, error }
+if (!data) return { data: null, error }
   return { data: mapDbUser(data as DbUser), error }
 }
 

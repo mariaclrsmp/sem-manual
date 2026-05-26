@@ -1,3 +1,5 @@
+import * as Haptics from 'expo-haptics';
+import { Check } from 'lucide-react-native';
 import { useEffect, useRef } from 'react';
 import { Animated, Pressable, View } from 'react-native';
 
@@ -10,7 +12,7 @@ const CATEGORY_CONFIG: Record<TaskCategory, { label: string; color: string; back
   grocery:     { label: 'Mercado',    color: '#6B7280',      background: '#F3F4F6' },
   home:        { label: 'Casa',       color: colors.verde,   background: '#E8F7F0' },
   pet:         { label: 'Pet',        color: colors.laranja, background: '#FFF3EB' },
-  maintenance: { label: 'Manutenção', color: '#6B7280',      background: '#F3F4F6' },
+  maintenance: { label: 'Manutencao', color: '#6B7280',      background: '#F3F4F6' },
 };
 
 interface TaskItemProps {
@@ -31,6 +33,8 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
   useEffect(() => {
     if (!completed || hasAnimated.current) return;
     hasAnimated.current = true;
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
     Animated.spring(checkScale, {
       toValue: 1,
@@ -59,7 +63,7 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
   return (
     <Pressable
       onPress={() => !completed && onComplete(id)}
-      style={({ pressed }) => ({
+      style={{
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#fff',
@@ -67,12 +71,11 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
         paddingHorizontal: 14,
         paddingVertical: 14,
         gap: 12,
-        opacity: pressed && !completed ? 0.75 : 1,
         shadowColor: '#2E2E2E',
         shadowOpacity: 0.06,
         shadowRadius: 6,
         elevation: 2,
-      })}
+      }}
     >
       {/* Circular checkbox */}
       <View style={{ width: 28, height: 28 }}>
@@ -88,11 +91,9 @@ export function TaskItem({ task, onComplete }: TaskItemProps) {
             justifyContent: 'center',
           }}
         >
-          <Animated.Text
-            style={{ fontSize: 14, color: '#fff', transform: [{ scale: checkScale }], lineHeight: 18 }}
-          >
-            ✓
-          </Animated.Text>
+          <Animated.View style={{ transform: [{ scale: checkScale }] }}>
+            <Check size={14} color="#fff" strokeWidth={3} />
+          </Animated.View>
         </View>
 
         {/* Floating XP badge */}
